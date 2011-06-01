@@ -1,5 +1,5 @@
 all: clean *.c
-	gcc *.c -o foo
+	gcc *.c -g -o foo
 
 clean:
 	rm -rf foo
