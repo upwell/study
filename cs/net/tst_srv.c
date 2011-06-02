@@ -45,7 +45,7 @@ void read2write(int fd)
     return;
 }
 
-void sread2write(int fd)
+int sread2write(int fd)
 {
     char buf[MAXLINE];
     memset(buf, '\0', sizeof(buf));
@@ -54,11 +54,17 @@ void sread2write(int fd)
     if(len > 0)
         write(fd, buf, len);
     else if(len == 0)
+    {
         printf("end of data\n");
+        return 1;
+    }
     else
+    {
         perror("error in read");
+        return -1;
+    }
 
-    return;
+    return 0;
 }
 
 void setnonblocking(int sock)
@@ -78,6 +84,38 @@ void setnonblocking(int sock)
     return;
 }
 
+void add_client_fd(int fd, int *fds, int *pcount)
+{
+    int i = 0;
+    *pcount += 1;
+
+    if(*pcount > MAXFDS)
+    {
+        printf("the number of conn has over the size of allowed\n");
+        return;
+    }
+
+    for(; i < MAXFDS; i++)
+    {
+        if(fds[i] == -1)
+        {
+            fds[i] = fd;
+            break;
+        }
+    }
+
+    return;
+
+}
+
+void remove_client_fd(int index, int *fds, int *pcount)
+{
+    *pcount -= 1;
+    fds[index] = -1;
+
+    return;
+}
+
 int main()
 {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -90,9 +128,13 @@ int main()
     int count = 0;
     int retval = 0;
     int maxfd = 0;
+    int i = 0;
 
     fd_set readset, readyset;
     int fds[MAXFDS];
+
+    for(i = 0; i < MAXFDS; i++)
+        fds[i] = -1;
 
     FD_ZERO(&readset);
     FD_ZERO(&readyset);
@@ -135,18 +177,22 @@ int main()
             printf("connection from %s, port %d\n", str_caddr, ntohs(caddr.sin_port));
 
             FD_SET(cfd, &readset);
-            fds[count] = cfd;
-            count++;
+            add_client_fd(cfd, fds, &count);
 
             if(cfd > maxfd) maxfd = cfd;
         }
 
-        int i = 0;
-        for(; i < count; i++)
+        for(i = 0; i < MAXFDS; i++)
         {
-            if(FD_ISSET(fds[i], &readyset))
+            if((fds[i] != -1) && FD_ISSET(fds[i], &readyset))
             {
-               sread2write(fds[i]);
+               retval = sread2write(fds[i]);
+               if(retval == 1) /* client socket closed */
+               {
+                  close(fds[i]);
+                  FD_CLR(fds[i], &readset);
+                  remove_client_fd(i, fds, &count);
+               }
             }
         }
 
