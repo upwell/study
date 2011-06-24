@@ -9,7 +9,10 @@ function notifyAllClients(data, loginName)
         if(loginName != socks[i][0])
             socks[i][1].write(data);
     }
-} var srv = net.createServer(function(stream) { console.log('connection is accepted');
+}
+
+var srv = net.createServer(function(stream) {
+    console.log('connection is accepted');
     stream.write("welcome, please enter your name:");
 
     var isName = true;
