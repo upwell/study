@@ -1,5 +1,5 @@
 all: clean *.c
-	gcc *.c -o foo -levent -I/usr/local/include -L/usr/local/lib
+	gcc *.c -o foo -lev
 
 clean:
 	rm -rf foo
