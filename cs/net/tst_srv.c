@@ -30,20 +30,6 @@
 
 #define MAXLINE 1024
 
-void read2write(int fd)
-{
-    char buf[MAXLINE];
-    memset(buf, '\0', sizeof(buf));
-    int len;
-    while((len = read(fd, buf, sizeof(buf))) > 0)
-    {
-        write(fd, buf, len);
-        memset(buf, '\0', sizeof(buf));
-    }
-
-    return;
-}
-
 void handle_client(int fd, short event, void* args)
 {
     char buf[MAXLINE];
@@ -116,33 +102,6 @@ int main()
 
     event_add(&ev, NULL);
     event_dispatch();
-
-    /*
-    while(1)
-    {
-        len = sizeof(caddr);
-        cfd = accept(fd, (struct sockaddr*)&caddr, &len);
-        if(cfd < 0)
-            perror("accept error");
-        if( (cid = fork()) > 0 )
-        {
-            continue;
-        } else
-        {
-            close(fd);
-
-            str_caddr = inet_ntoa(caddr.sin_addr);
-            if(!str_caddr)
-            {
-                perror("inet_ntoa failed\n");
-            }
-            printf("connection from %s, port %d\n", str_caddr, ntohs(caddr.sin_port));
-            read2write(cfd);
-            close(cfd);
-            exit(0);
-        }
-    }
-    */
 
     close(fd);
     exit(0);
