@@ -27,12 +27,21 @@
 #include <arpa/inet.h>
 
 #include <event.h>
+#include <event2/bufferevent.h>
+#include <event2/buffer.h>
 
 #define MAXLINE 1024
+
+typedef struct paras
+{
+    struct event *ev;
+    void *args;
+} paras_t;
 
 void handle_client(int fd, short event, void* args)
 {
     char buf[MAXLINE];
+    paras_t *para = (paras_t*) args;
     memset(buf, '\0', sizeof(buf));
     int len;
 
@@ -46,16 +55,18 @@ void handle_client(int fd, short event, void* args)
         {
             printf("end of data\n");
             close(fd);
-            event_del((struct event*)args); /* this is a must */
-            free(args);
+            event_del(para->ev); /* this is a must */
+            event_free(para->ev);
+            free(para);
         }
     }
-
 }
 
 void conn_accept(int fd, short event, void *args)
 {
     printf("inside conn accept [%d], event [%d]\n", fd, event);
+
+    struct event_base *base = args;
 
     struct sockaddr_in caddr;
     socklen_t len;
@@ -73,8 +84,10 @@ void conn_accept(int fd, short event, void *args)
     printf("connection from %s, port %d\n", str_caddr, ntohs(caddr.sin_port));
 
     /* add the client fd into the interested list */
-    struct event *pev = (struct event*) malloc(sizeof(struct event));
-    event_set(pev, cfd, EV_READ|EV_PERSIST, handle_client, pev);
+    paras_t *para = (paras_t*) malloc(sizeof(paras_t));
+    para->args = base;
+    struct event *pev = event_new(base, cfd, EV_READ|EV_PERSIST, handle_client, para);
+    para->ev = pev;
     event_add(pev, NULL);
 
     return;
@@ -96,12 +109,12 @@ int main()
     bind(fd, (struct sockaddr*)&saddr, sizeof(saddr));
     listen(fd, 5);
 
-    event_init();
-    struct event ev;
-    event_set(&ev, fd, EV_READ | EV_PERSIST, conn_accept, &ev);
+    struct event_base *base = event_base_new();
+    struct event *listen;
 
-    event_add(&ev, NULL);
-    event_dispatch();
+    listen = event_new(base, fd, EV_READ|EV_PERSIST, conn_accept, (void*)base);
+    event_add(listen, NULL);
+    event_base_dispatch(base);
 
     close(fd);
     exit(0);
