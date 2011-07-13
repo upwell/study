@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <strings.h>
 #include <string.h>
+#include <signal.h>
 
 #include <arpa/inet.h>
 
@@ -38,27 +39,23 @@ typedef struct paras
     void *args;
 } paras_t;
 
-void handle_client(int fd, short event, void* args)
+void read_cb(struct bufferevent *bev, void *args)
 {
-    char buf[MAXLINE];
-    paras_t *para = (paras_t*) args;
-    memset(buf, '\0', sizeof(buf));
-    int len;
+    char *pbuff;
+    size_t len;
 
-    if(event & EV_READ)
+    struct evbuffer *in_eb = bufferevent_get_input(bev);
+    struct evbuffer *out_eb = bufferevent_get_output(bev);
+
+    len = evbuffer_get_length(in_eb);
+
+    pbuff = evbuffer_readln(in_eb, &len, EVBUFFER_EOL_CRLF);
+    if(!pbuff || 0 == len)
     {
-        len = read(fd, buf, sizeof(buf));
-        if(len > 0)
-        {
-            write(fd, buf, len);
-        } else if(len == 0)
-        {
-            printf("end of data\n");
-            close(fd);
-            event_del(para->ev); /* this is a must */
-            event_free(para->ev);
-            free(para);
-        }
+        bufferevent_free(bev);
+    } else
+    {
+        evbuffer_add(out_eb, pbuff, len);
     }
 }
 
@@ -67,6 +64,7 @@ void conn_accept(int fd, short event, void *args)
     printf("inside conn accept [%d], event [%d]\n", fd, event);
 
     struct event_base *base = args;
+    struct bufferevent* be;
 
     struct sockaddr_in caddr;
     socklen_t len;
@@ -84,13 +82,28 @@ void conn_accept(int fd, short event, void *args)
     printf("connection from %s, port %d\n", str_caddr, ntohs(caddr.sin_port));
 
     /* add the client fd into the interested list */
+
+    be = bufferevent_socket_new(base, cfd, BEV_OPT_CLOSE_ON_FREE);
+    bufferevent_setcb(be, read_cb, NULL, NULL, be);
+    bufferevent_enable(be, EV_READ|EV_WRITE);
+
+    /*
     paras_t *para = (paras_t*) malloc(sizeof(paras_t));
     para->args = base;
     struct event *pev = event_new(base, cfd, EV_READ|EV_PERSIST, handle_client, para);
     para->ev = pev;
     event_add(pev, NULL);
+    */
 
     return;
+}
+
+void signal_cb(int sig, short events, void *args)
+{
+    struct event_base *base = args;
+
+    printf("Caught Exit Signal, quit the loop\n");
+    event_base_loopexit(base, NULL);
 }
 
 int main()
@@ -111,10 +124,18 @@ int main()
 
     struct event_base *base = event_base_new();
     struct event *listen;
+    struct event *intsig;
 
     listen = event_new(base, fd, EV_READ|EV_PERSIST, conn_accept, (void*)base);
     event_add(listen, NULL);
+
+    intsig = evsignal_new(base, SIGINT, signal_cb, base);
+    event_add(intsig, NULL);
+
     event_base_dispatch(base);
+
+    event_free(listen);
+    event_free(intsig);
 
     close(fd);
     exit(0);
