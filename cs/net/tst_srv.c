@@ -39,6 +39,12 @@ typedef struct paras
     void *args;
 } paras_t;
 
+void write_cb(struct bufferevent *bev, void *args)
+{
+    printf("inside writecb\n");
+    return;
+}
+
 void read_cb(struct bufferevent *bev, void *args)
 {
     char *pbuff;
@@ -81,10 +87,8 @@ void conn_accept(int fd, short event, void *args)
     }
     printf("connection from %s, port %d\n", str_caddr, ntohs(caddr.sin_port));
 
-    /* add the client fd into the interested list */
-
     be = bufferevent_socket_new(base, cfd, BEV_OPT_CLOSE_ON_FREE);
-    bufferevent_setcb(be, read_cb, NULL, NULL, be);
+    bufferevent_setcb(be, read_cb, write_cb, NULL, be);
     bufferevent_enable(be, EV_READ|EV_WRITE);
 
     /*
