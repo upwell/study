@@ -1,0 +1,1 @@
+Instead of regular events, which give callbacks when the underlying transport is ready to be read or written, a bufferevent invokes its user-supplied callbacks when **it has read or written enough data**.
