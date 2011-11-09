@@ -1,0 +1,6 @@
+this requires the installation of googletest.
+
+# apt-get install libgtest-dev
+
+or you can manually compile the library and place the header file and library at the
+right location.
