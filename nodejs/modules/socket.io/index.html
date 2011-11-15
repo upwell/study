@@ -1,0 +1,13 @@
+<html>
+    <body>
+        <script src="/socket.io/socket.io.js"></script>
+        <script language="javascript">
+            var sock = io.connect("http://localhost");
+            sock.on('news', function(data) {
+                document.getElementById('test').innerHTML='hello';
+                sock.emit('my other event', {my: 'data'});
+            });
+        </script>
+        <div id="test">hello</div>
+    </body>
+</html>
