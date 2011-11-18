@@ -2,14 +2,14 @@ net = require('net');
 NodeQueue = require('./nodequeue');
 
 var configs = {
-    conn: 10,
+    conn: 500,
     trans: 10
 };
 
 var options = {
-    host: "localhost",
-    port: 81,
-    path: "/proxy.pac",
+    host: "10.64.75.58",
+    port: 80,
+    path: "/",
     method: "GET",
 };
 
@@ -19,14 +19,23 @@ var requests = "GET " + options['path'] + " HTTP/1.1\r\n"
              + "Host: " + options['host'] + "\r\n\r\n";
 
 var queue = new NodeQueue();
+var sock_pool = [];
+
+var start_time = getCurrentTime();
+
+setInterval(printStat, 5000);
 
 //main routing here
-for(var i = 0; i < configs['conn']; i++)
+for(var i = 0, j = configs['conn']; i < j; i++)
     create_socket();
+//    init_socket();
+
+//for(var i = 0, j = configs['conn']; i < j; i++)
+//    queue.enqueue(sock_pool.pop());
 
 queue.on('ready', function()
 {
-    if(queue.size() < configs['conn']) return;
+//    if(queue.size() < configs['conn']) return;
 
     while(queue.size() > 0)
     {
@@ -36,13 +45,28 @@ queue.on('ready', function()
     }
 });
 
-
-function move_in_to_out()
+function init_socket()
 {
-    while(in_pool.length > 0)
-    {
-        out_pool.push(in_pool.pop());
-    }
+    var sock = new net.Socket();
+
+    sock.connect(options['port'], options['host'], function() {
+        sock_pool.push(sock);
+    });
+
+    sock.on('error', function(e) {
+        queue.remove(sock);
+        console.log('sock error', e);
+        create_socket();
+    });
+
+    sock.on('end', function() {
+        queue.remove(sock);
+        create_socket();
+    });
+
+    sock.on('data', function(data) {
+        parse_http_resp(data, sock);
+    });
 }
 
 function create_socket()
@@ -54,12 +78,14 @@ function create_socket()
     });
 
     sock.on('error', function(e) {
-        console.log('sock error', e);
         queue.remove(sock);
+        console.log('sock error', e);
+        create_socket();
     });
 
     sock.on('end', function() {
         queue.remove(sock);
+        create_socket();
     });
 
     sock.on('data', function(data) {
@@ -90,12 +116,19 @@ function parse_http_resp(data, sock)
 
     if(data_len == resp.length)
     {
-        sock.end();
-        create_socket();
+        queue.enqueue(sock);
     }
 }
 
-function rem_from_array(array, ele)
+function getCurrentTime()
 {
-    return array.filter(function(x) { return x != ele });
+    return new Date().valueOf();
+}
+
+function printStat()
+{
+    var average_trans = stat_trans / ((getCurrentTime() - start_time) / 1000);
+
+    console.log("Total Requests: ", stat_trans);
+    console.log("Average Requests: ", average_trans);
 }

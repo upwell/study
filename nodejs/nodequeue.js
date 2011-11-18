@@ -37,8 +37,8 @@ NodeQueue.prototype.dequeue = function() {
 }
 
 NodeQueue.prototype.remove = function(element) {
-    rem_from_array(this.out_pool, element);
-    rem_from_array(this.in_pool, element);
+    this.out_pool = rem_from_array(this.out_pool, element);
+    this.in_pool = rem_from_array(this.in_pool, element);
 };
 
 NodeQueue.prototype.size = function() {
