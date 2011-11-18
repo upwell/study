@@ -1,5 +1,11 @@
 http = require("http");
 
+var configs = { send_interval : 10,
+                stat_interval : 1000
+                };
+
+http.globalAgent.maxSockets = 20;
+
 var options = {
     host: "localhost",
     port: 81,
@@ -15,10 +21,6 @@ var stat_request = 0;
 var stat_success = 0;
 var stat_failure = 0;
 var handle_time = 0;
-
-var configs = { send_interval : 2,
-                stat_interval : 1000
-                };
 
 setInterval(sendRequest, configs['send_interval']);
 setInterval(sendStat, configs['stat_interval']);
@@ -70,8 +72,9 @@ function sendRequest()
     });
 
     req.on("error", function(e) {
-        console.log('problem while send the request');
+        console.log('problem while send the request', e.message);
         stat_failure += 1;
+        this.connection.destroy();
     });
 
     req.end();
