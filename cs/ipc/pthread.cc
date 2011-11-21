@@ -11,8 +11,8 @@ pthread_mutex_t data_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_sig = PTHREAD_COND_INITIALIZER;
 
 
-const int total_producer = 6;
-const int total_consumer = 2;
+const int total_producer = 2;
+const int total_consumer = 5;
 bool is_done = false;
 
 queue<int> data;
@@ -84,7 +84,7 @@ int main()
     cout << "all work threads exit" << endl;
     is_done = true;
     // notify the pending threads to exit
-    pthread_cond_signal(&cond_sig);
+    pthread_cond_broadcast(&cond_sig);
 
     for(int i = 0; i < total_consumer; i++)
         pthread_join(cid[i], NULL);

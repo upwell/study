@@ -1,2 +1,2 @@
 all:
-	g++ pthread.cc -lpthread
+	g++ -g pthread.cc -lpthread

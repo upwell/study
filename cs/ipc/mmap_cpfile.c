@@ -48,7 +48,10 @@ int main(int argc, char *argv[])
     {
         len = (left_size < page_size) ? left_size : page_size;
 
-        ptr = mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_SHARED, fd, file_size-left_size);
+        /*
+         *  offset must be a multiple of the page size as returned by sysconf(_SC_PAGE_SIZE).
+         */
+        ptr = mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_PRIVATE, fd, file_size-left_size);
         if(!ptr)
         {
             printf("mmap error [%s]\n", strerror(errno));
