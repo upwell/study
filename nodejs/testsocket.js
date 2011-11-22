@@ -7,8 +7,8 @@ var configs = {
 };
 
 var options = {
-    host: "10.64.75.58",
-    port: 80,
+    host: "10.64.75.59",
+    port: 8000,
     path: "/",
     method: "GET",
 };
