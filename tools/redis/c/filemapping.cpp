@@ -59,7 +59,7 @@ bool FileMapping::AddFile(const string &lpath, const string &rpath)
     {
         parentLPath = lpath.substr(0, lpath.find_last_of("/"));
 
-        isParentVnodeFound = processVnodeCheck(parentLPath, pvfid);
+        isParentVnodeFound = isLPathVnodeExist(parentLPath, pvfid);
 
         if(!isParentVnodeFound)
         {
@@ -70,6 +70,92 @@ bool FileMapping::AddFile(const string &lpath, const string &rpath)
     }
 
     AddFileNode(lpath, rpath, fid);
+
+    return true;
+}
+
+/*
+ * Get the RPATH of a file
+ * TODO the path sperator can also be "\"
+ *
+ */
+bool FileMapping::GetRPath(const string &lpath, SearchResult &result)
+{
+    bool isFound = false;
+    fid_t fid = 0;
+    string tmpStr("");
+
+    isFound = isLPathNodeExist(lpath, fid);
+    result.SetExactFound(isFound);
+    if(isFound)
+    {
+        tmpStr = getRPathFromFid(fid);
+        result.SetExactRPath(tmpStr);
+        return true;
+    }
+
+    size_t lpos = lpath.find("/", 2);
+    if(lpos == string::npos)
+    {
+        LogPrintf("something is wrong");
+        // TODO throw
+        return false;
+    }
+
+    size_t pos;
+    string leftStr = lpath;
+    string rightStr = "";
+    pos = leftStr.find_last_of("/");
+
+    while(pos != lpos)
+    {
+        rightStr = lpath.substr(pos);
+        leftStr = leftStr.substr(0, pos);
+
+        isFound = isLPathNodeExist(leftStr, fid);
+
+        if(isFound)
+        {
+            tmpStr = getRPathFromFid(fid);
+            result.SetParentFound(true);
+            result.SetParentRPath(tmpStr);
+            tmpStr += rightStr;
+            result.SetExactRPath(tmpStr);
+            break;
+        } else
+        {
+            pos = leftStr.find_last_of("/");
+        }
+    }
+
+    if(!isFound)
+    {
+        result.SetParentFound(false);
+    }
+
+    return true;
+}
+
+string FileMapping::getRPathFromFid(const fid_t fid)
+{
+    checkRedisContext();
+
+    redisReply *reply;
+    string rtn("");
+
+    string tmpStr = getFileRPathKey(fid);
+    reply = (redisReply*) redisCommand(rContext_, "GET %s", tmpStr.c_str());
+
+    if(reply->type == REDIS_REPLY_ERROR ||
+            reply->type == REDIS_REPLY_NIL)
+    {
+        // TODO throw
+        return rtn;
+    }
+
+    rtn = reply->str;
+
+    return rtn;
 }
 
 bool FileMapping::checkRedisContext()
@@ -105,16 +191,17 @@ bool FileMapping::AddFileNode(const string &lpath, const string &rpath,
     tmpStr = getFileLPathKey(fid);
     command = "SET " + tmpStr + " " + lpath;
     redisAppendCommand(rContext_, command.c_str());
+    count++;
 
     tmpStr = getFileRPathKey(fid);
     command = "SET " + tmpStr + " " + rpath;
     redisAppendCommand(rContext_, command.c_str());
+    count++;
 
     tmpStr = getLPathFidKey(lpath);
     command = "SET " + tmpStr + " " + fidToString(fid);
     redisAppendCommand(rContext_, command.c_str());
-
-    count += 3;
+    count++;
 
     for(int i = 0; i < count; i++)
     {
@@ -155,7 +242,34 @@ bool FileMapping::AddVnode(const string &lpath, fid_t childFid)
     return true;
 }
 
-bool FileMapping::processVnodeCheck(const string &lpath, fid_t &fid)
+bool FileMapping::isLPathNodeExist(const string &lpath, fid_t &fid)
+{
+    checkRedisContext();
+
+    string lpathFidKey = getLPathFidKey(lpath);
+    redisReply *reply;
+
+    reply = (redisReply*) redisCommand(rContext_, "GET %s", lpathFidKey.c_str());
+
+    if(reply->type == REDIS_REPLY_ERROR)
+    {
+        // TODO throw
+        LogPrintf("redis command failed\n");
+        return false;
+    } else
+    {
+        if(reply->type == REDIS_REPLY_NIL)
+        {
+            // no key found
+            return false;
+        }
+
+        fid = atoi(reply->str);
+        return true;
+    }
+}
+
+bool FileMapping::isLPathVnodeExist(const string &lpath, fid_t &fid)
 {
     checkRedisContext();
 
@@ -179,51 +293,6 @@ bool FileMapping::processVnodeCheck(const string &lpath, fid_t &fid)
 
         fid = atoi(reply->str);
         return true;
-    }
-}
-
-bool FileMapping::isVnode(const fid_t fid)
-{
-    checkRedisContext();
-
-    string fileTypeKey = getFileTypeKey(fid);
-    bool rtn = false;
-
-    redisReply *reply = (redisReply*) redisCommand(rContext_, "EXIST %s", fileTypeKey.c_str());
-
-    if(reply->type == REDIS_REPLY_ERROR)
-    {
-        // TODO throw
-        return rtn;
-    } else {
-        rtn = reply->integer == 1 ? true : false;
-        freeReplyObject(reply);
-
-        return rtn;
-    }
-}
-
-bool FileMapping::isLPathNodeExist(const string &lpath)
-{
-    checkRedisContext();
-
-    string lpathFidKey;
-    redisReply *reply;
-    bool rtn = false;
-
-    lpathFidKey = getLPathFidKey(lpath);
-    reply = (redisReply*) redisCommand(rContext_, "EXISTS %s", lpathFidKey.c_str());
-
-    if(reply->type == REDIS_REPLY_ERROR)
-    {
-       // TODO throw exception here
-       return rtn;
-    } else
-    {
-        rtn = (reply->integer == 1) ? true : false;
-        freeReplyObject(reply);
-
-        return rtn;
     }
 }
 

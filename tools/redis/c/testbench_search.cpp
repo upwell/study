@@ -1,4 +1,5 @@
 #include "filemapping.h"
+#include "searchresult.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,6 +43,9 @@ int main(int argc, char *argv[])
 
     int count = atoi(argv[1]);
 
+    int exact_count = 0;
+    int found_count = 0;
+
     FileMapping fm;
     fm.Init();
 
@@ -54,16 +58,25 @@ int main(int argc, char *argv[])
 
     for(int i = 0; i < count; i++)
     {
+        SearchResult result;
+
         string tmpStr1 = fidToString(getRand(MAX));
         string tmpStr2 = fidToString(getRand(MAX));
+
         string lpath = lpath_base + tmpStr1 + "/" + tmpStr2;
-        string rpath = rpath_base + tmpStr2 + "/" + tmpStr1;
-        fm.AddFile(lpath, rpath);
+
+        fm.GetRPath(lpath, result);
+        if(result.IsExactFound())
+            exact_count++;
+        if(result.IsFound())
+            found_count++;
     }
 
     long long end = getCurrentTime();
 
     printf("Average handle time (us) : %lld\n", (end-start)/count);
+    printf("Exact found [%d] out of [%d]\n", exact_count, count);
+    printf("Found [%d] out of [%d]\n", found_count, count);
 
     return 0;
 }

@@ -1,0 +1,22 @@
+CXX = g++
+CXXFLAG = -g -Wall
+LDFLAG = -lhiredis
+
+TEST = testunit
+
+GTEST_LIB = /usr/lib/libgtest_main.a /usr/lib/libgtest.a
+GTEST_LINK = -lpthread
+
+all: $(TEST)
+	
+filemapping.o: filemapping.cpp
+	$(CXX) $(CXXFLAG) -c $^
+
+testunit.o: testunit.cpp
+	$(CXX) $(CXXFLAG) -c $^
+
+testunit: testunit.o filemapping.o
+	$(CXX) $(CXXFLAG) $^ $(GTEST_LIB) -o $@ $(GTEST_LINK) $(LDFLAG)
+
+clean:
+	rm -rf $(TEST) *.o
