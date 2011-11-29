@@ -3,8 +3,8 @@
 #include <execinfo.h>
 #include <string.h>
 
-#define ARRAY_LEN 50000
-#define MAX_VALUE 1000000
+#define ARRAY_LEN 100000
+#define MAX_VALUE 10000000
 
 void print_arr(int *arr, int len)
 {
@@ -94,7 +94,34 @@ void insert_sort2(int *array, int len)
 
 void quick_sort(int *array, int len)
 {
+    if(len <= 1) return;
 
+    int i, j;
+    int pick, tmp;
+    pick = array[len/2];
+
+    for(i = 0, j = len-1; i < j; )
+    {
+        if(array[i] >= pick && array[j] <= pick)
+        {
+            tmp = array[i];
+            array[i] = array[j];
+            array[j] = tmp;
+
+            if(array[j] != pick)
+                j--;
+            else
+                i++;
+        }
+
+        if(array[i] < pick)  i++;
+        if(array[j] > pick)  j--;
+    }
+
+    quick_sort(array, i);
+    quick_sort(array+i+1, len-i-1);
+
+    return;
 }
 
 void sort_func(void(*func)(int*, int), int *array, int len)
@@ -135,6 +162,7 @@ int main()
     //print_arr(array, ARRAY_LEN);
     sort_func(insert_sort1, array, ARRAY_LEN);
     sort_func(insert_sort2, array1, ARRAY_LEN);
+    sort_func(quick_sort, array2, ARRAY_LEN);
     //print_arr(array, ARRAY_LEN);
 
     return 0;
