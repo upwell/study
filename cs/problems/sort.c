@@ -124,6 +124,26 @@ void quick_sort(int *array, int len)
     return;
 }
 
+void bit_sort(int *array, int len)
+{
+    char *bitmap = (char*) calloc(1, MAX_VALUE);
+
+    int i, j;
+    for(i = 0; i < len; i++)
+        bitmap[array[i]]++;
+
+    j = 0;
+    for(i = 0; i < MAX_VALUE; i++)
+    {
+        while(bitmap[i]-- > 0)
+            array[j++] = bitmap[i];
+    }
+
+    free(bitmap);
+
+    return;
+}
+
 void sort_func(void(*func)(int*, int), int *array, int len)
 {
     char **func_name;
@@ -163,6 +183,7 @@ int main()
     sort_func(insert_sort1, array, ARRAY_LEN);
     sort_func(insert_sort2, array1, ARRAY_LEN);
     sort_func(quick_sort, array2, ARRAY_LEN);
+    sort_func(bit_sort, array3, ARRAY_LEN);
     //print_arr(array, ARRAY_LEN);
 
     return 0;
