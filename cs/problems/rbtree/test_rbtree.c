@@ -5,7 +5,7 @@
 
 #include "ngx_rbtree.h"
 
-#define TREE_SIZE 100
+#define TREE_SIZE 10000000
 #define INT_MAX (TREE_SIZE*10)
 
 typedef struct test_node_s
@@ -92,7 +92,7 @@ int main()
 
     printf("min value [%d]\n", tnode->value);
 
-    tree_walk(trb.root, trb.sentinel);
+    //tree_walk(trb.root, trb.sentinel);
 
     free(nodes);
 
