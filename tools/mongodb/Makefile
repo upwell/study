@@ -5,12 +5,9 @@ BOOSTLDFLAGS += -lboost_system
 
 MONGOLDFLAGS = -lmongoclient
 
-BIN = conn.out insert.out
+BIN = conn.out insert.out bench_add.out bench_search.out
 
 all: $(BIN)
 
-conn.out: conn.cpp
-	g++ $^ -o $@ $(MONGOLDFLAGS) $(BOOSTLDFLAGS)
-
-insert.out: insert.cpp
+$(BIN): %.out: %.cpp
 	g++ $^ -o $@ $(MONGOLDFLAGS) $(BOOSTLDFLAGS)
