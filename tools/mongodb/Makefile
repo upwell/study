@@ -6,8 +6,12 @@ BOOSTLDFLAGS += -lboost_system
 MONGOLDFLAGS = -lmongoclient
 
 BIN = conn.out insert.out bench_add.out bench_search.out
+THREAD_BIN = thread_add.out thread_search.out
 
-all: $(BIN)
+all: $(BIN) $(THREAD_BIN)
 
 $(BIN): %.out: %.cpp
-	g++ $^ -o $@ $(MONGOLDFLAGS) $(BOOSTLDFLAGS)
+	$(CPP) $^ -o $@ $(MONGOLDFLAGS) $(BOOSTLDFLAGS)
+
+$(THREAD_BIN): %.out: %.cpp
+	$(CPP) $^ -o $@ $(MONGOLDFLAGS) $(BOOSTLDFLAGS) -lpthread

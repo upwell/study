@@ -61,7 +61,8 @@ int main(int argc, char *argv[])
         for(i = 0; i < nloops; i++)
         {
             sem_wait(mutex);
-            printf("child [%d]\n", (*addr)++);
+            /* printf("child [%d]\n", (*addr)++); */
+            (*addr)++;
             sem_post(mutex);
         }
 
@@ -71,7 +72,8 @@ int main(int argc, char *argv[])
     for(i = 0; i < nloops; i++)
     {
         sem_wait(mutex);
-        printf("child [%d]\n", (*addr)++);
+        /* printf("parent [%d]\n", (*addr)++); */
+        (*addr)++;
         sem_post(mutex);
     }
 

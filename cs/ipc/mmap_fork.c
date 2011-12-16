@@ -60,7 +60,8 @@ int main(int argc, char *argv[])
         for(i = 0; i < nloops; i++)
         {
             pthread_mutex_lock(p_mutex);
-            printf("child [%d]\n", (*addr)++);
+            /* printf("child [%d]\n", (*addr)++); */
+            (*addr)++;
             pthread_mutex_unlock(p_mutex);
         }
 
@@ -70,7 +71,8 @@ int main(int argc, char *argv[])
     for(i = 0; i < nloops; i++)
     {
         pthread_mutex_lock(p_mutex);
-        printf("parent [%d]\n", (*addr)++);
+        /* printf("parent [%d]\n", (*addr)++); */
+        (*addr)++;
         pthread_mutex_unlock(p_mutex);
     }
 
