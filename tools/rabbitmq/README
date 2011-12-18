@@ -1,0 +1,6 @@
+env:
+    - rabbitmq installed
+    - python ready
+    - python amqp lib - pika
+        # sudo apt-get install python-pip
+        # sudo pip install pika
