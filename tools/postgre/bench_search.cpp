@@ -90,6 +90,7 @@ void run(int cnt)
         else
             cout << "select failed ["
                 << PQresultErrorMessage(result) << "]" << endl;
+        PQclear(result);
     }
     long long end = getCurrentTime();
 

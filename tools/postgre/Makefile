@@ -1,6 +1,6 @@
 CPP = g++
 
-PQ_PATH = /home/han/install/postgre
+PQ_PATH = $(HOME)/install/postgre
 PQ_INCLUDE = $(PQ_PATH)/include
 
 PQ_LDFLAGS = -L$(PQ_PATH)/lib -lpq
