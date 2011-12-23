@@ -55,7 +55,8 @@ int main()
     bzero(&saddr, sizeof(struct sockaddr_in));
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(3120);
-    saddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    saddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    /* saddr.sin_addr.s_addr = htonl(INADDR_ANY); */
 
     bind(fd, (struct sockaddr*)&saddr, sizeof(saddr));
     listen(fd, 5);
