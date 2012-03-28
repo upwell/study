@@ -1,4 +1,4 @@
-var HOST = '10.64.75.193';
+var HOST = '10.64.75.194';
 var PORT = 1344;
 var URL = 'http://www.qq.com/';
 var REQNUM = 1;
