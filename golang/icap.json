@@ -1,0 +1,18 @@
+{
+    "IcapHost": "10.64.75.74",
+    "IcapPort": "1344",
+    "ConnNum": 1,
+    "ReqNum": "100000",
+    "IcapReq": [
+        {
+            "HttpUrl": "http://www.abc.com",
+            "IsWithUser": true,
+            "Username": "han"
+        },
+        {
+            "HttpUrl": "http://www.123.com",
+            "IsWithUser": true,
+            "Username": "jim"
+        }
+    ]
+}
