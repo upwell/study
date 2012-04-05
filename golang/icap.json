@@ -2,7 +2,8 @@
     "IcapHost": "10.64.75.74",
     "IcapPort": "1344",
     "ConnNum": 1,
-    "ReqNum": "100000",
+    "ReqNum": "2000000",
+    "ThreadNum": 1,
     "IcapReq": [
         {
             "HttpUrl": "http://www.abc.com",

@@ -3,7 +3,7 @@ package main
 import (
     "fmt"
     "net"
-    "bufio"
+//    "bufio"
     "strings"
     "crypto/md5"
     "sync"
@@ -22,6 +22,7 @@ type CfgMsg struct {
     ConnNum int
     ReqNum string
     IcapReq []CfgReq
+    ThreadNum int
 }
 
 type CfgReq struct {
@@ -50,6 +51,8 @@ var Host string = "10.64.75.194"
 var Port string = "1344"
 var ConnNum int = 1
 var TotalReqNum uint32 = 10000000
+var AvgReqNum uint32 = 0
+var ThreadNum int = 1
 
 var Cfg CfgMsg
 
@@ -60,7 +63,9 @@ var done_chan chan bool
 
 
 //var net_lock sync.Mutex
-var map_lock sync.Mutex
+//var map_lock sync.Mutex
+var send_lock sync.Mutex
+var recv_lock sync.Mutex
 
 func getMd5(in uint32) string {
     hash := md5.New()
@@ -98,92 +103,46 @@ func prepareRequest() {
         http_str := fmt.Sprintf("GET %s HTTP/1.0\r\n\r\n", url)
         http_len := len(http_str)
 
-        req_str := fmt.Sprintf("REQMOD icap://%s:%s/REQ-Service ICAP/1.0\r\n" + "Host:%s:%s\r\n" + "Allow: 204\r\n" + "X-Session-ID: %s\r\n", Host, Port, Host, Port, uuid)
+        req_str := fmt.Sprintf("REQMOD icap://%s:%s/REQ-Service ICAP/1.0\r\n" +
+                    "Host:%s:%s\r\n" +
+                    "Allow: 204\r\n" +
+                    "X-Session-ID: %s\r\n",
+                    Host, Port, Host, Port, uuid)
 
         if req.IsWithUser {
-            req_str += "X-Subscriber-Type: 0\r\nX-Subscriber-Data: " + req.Username + "\r\n"
+            req_str += "X-Subscriber-Type: 0\r\nX-Subscriber-Data: " +
+                        req.Username + "\r\n"
         }
 
-        req_str += fmt.Sprintf("Encapsulated: req-hdr=0, null-body=%d\r\n\r\n" + "%s", http_len, http_str)
+        req_str += fmt.Sprintf("Encapsulated: req-hdr=0, null-body=%d\r\n\r\n" + "%s",
+                        http_len, http_str)
 
         req_data <- ReqData{req_str, uuid}
         i++
     }
 }
 
-func sendRequest(conn net.Conn) {
-    var i uint32 = 0
-    for {
-        if i >= TotalReqNum {
-            fmt.Println("send request completed")
-            return
-        }
-
-        reqd := <-req_data
-        cnt, err := conn.Write([]byte(reqd.data))
-
-        start_time := Now()
-        end_time := start_time
-
-        request := Request{ start_time, end_time, false }
-        map_lock.Lock()
-        request_map[reqd.guid] = request
-        map_lock.Unlock()
-
-        if err != nil {
-            fmt.Println("write error %d", cnt)
-        }
-        i++
-    }
-}
-
-func receiveResponse(conn net.Conn)  {
-    var i uint32 = 0
-    reader := bufio.NewReader(conn)
-    data := ""
-
-    for {
-        if i >= TotalReqNum {
-            fmt.Println("receive response completed");
-            return
-        }
-
-        line, err := reader.ReadString('\n')
-        if err != nil {
-            fmt.Println("read error")
-            return
-        }
-
-        data += line
-        if strings.Contains(data, "\r\n\r\n") {
-            i++
-            resp_data <- RespData{data, Now()}
-            data = ""
-        }
-    }
-}
-
 func sendRequestNew(conn *net.TCPConn) {
     var i uint32 = 0
     for {
-        if i >= TotalReqNum {
+        if i >= AvgReqNum {
             fmt.Println("send request completed")
             return
         }
 
         reqd := <-req_data
-        //net_lock.Lock()
+        send_lock.Lock()
         cnt, err := conn.Write([]byte(reqd.data))
-        //net_lock.Unlock()
+        send_lock.Unlock()
 
         start_time := Now()
         end_time := start_time
 
         request := Request{ start_time, end_time, false }
 
-        map_lock.Lock()
+        //map_lock.Lock()
         request_map[reqd.guid] = request
-        map_lock.Unlock()
+        //map_lock.Unlock()
 
         if err != nil {
             fmt.Println("write error %d", cnt)
@@ -192,21 +151,21 @@ func sendRequestNew(conn *net.TCPConn) {
     }
 }
 
-func receiveResponseNew(conn *net.TCPConn)  {
+func receiveResponseNew(conn *net.TCPConn) {
     var i uint32 = 0
     var data string = ""
 
     for {
         buff := make([]byte, 4096)
 
-        if i >= TotalReqNum {
+        if i >= AvgReqNum {
             fmt.Println("receive response completed");
             return
         }
 
-        //net_lock.Lock()
+        recv_lock.Lock()
         n, err := conn.Read(buff)
-        //net_lock.Unlock()
+        recv_lock.Unlock()
         if err != nil {
             fmt.Println("read error");
             return
@@ -255,7 +214,7 @@ func parseResponse() {
         respd := <-resp_data
         val := getSessionID(respd.data)
         if val != "" {
-            map_lock.Lock()
+            //map_lock.Lock()
             if request,ok := request_map[val]; ok {
                 request.respond = true
                 request.end = respd.end
@@ -263,7 +222,7 @@ func parseResponse() {
             } else {
                 fmt.Println("parseResponse: no data for session " + val + " - " + respd.data)
             }
-            map_lock.Unlock()
+            //map_lock.Unlock()
         }
         i++
     }
@@ -337,6 +296,13 @@ func parseCfg(cfgfile string) {
         }
     }
     fmt.Println("total request number is", TotalReqNum)
+
+    if Cfg.ThreadNum > 0 {
+        ThreadNum = Cfg.ThreadNum
+    }
+
+    AvgReqNum = TotalReqNum / uint32(ThreadNum)
+    TotalReqNum = AvgReqNum * uint32(ThreadNum)
 }
 
 func main() {
@@ -367,10 +333,14 @@ func main() {
     g_start := Now()
 
     go prepareRequest()
-    //go sendRequest(conn)
-    //go receiveResponse(conn)
-    go sendRequestNew(conn)
-    go receiveResponseNew(conn)
+
+    for i := 0; i < ThreadNum; i++ {
+        go receiveResponseNew(conn)
+    }
+    for i := 0; i < ThreadNum; i++ {
+        go sendRequestNew(conn)
+    }
+
     go parseResponse()
 
     done := <-done_chan
