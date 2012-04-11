@@ -100,7 +100,7 @@ func prepareRequest() {
         url := req.HttpUrl
         uuid := getMd5(i)
 
-        http_str := fmt.Sprintf("GET %s HTTP/1.0\r\n\r\n", url)
+        http_str := fmt.Sprintf("GET %s HTTP/1.0", url)
         http_len := len(http_str)
 
         req_str := fmt.Sprintf("REQMOD icap://%s:%s/REQ-Service ICAP/1.0\r\n" +
