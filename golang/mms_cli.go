@@ -8,16 +8,19 @@ import (
     "time"
 )
 
-var Host string = "10.64.75.199"
+var Host string = "192.168.75.2"
 var Port string = "8180"
 
-var Thinktime time.Duration = 0 * time.Millisecond
+var ConnNum int = 20
+var RequestNum int = 100000
 
-var done_chan chan bool
+var Thinktime time.Duration = 20 * time.Millisecond
+
+var done_chan []chan bool
 
 var data []byte
 
-func recvResponse(conn *net.TCPConn, req_num int) {
+func recvResponse(index int, conn *net.TCPConn, req_num int) {
     total_bytes := req_num * 42
     recv_bytes := 0
     for {
@@ -36,17 +39,17 @@ func recvResponse(conn *net.TCPConn, req_num int) {
         }
     }
 
-    done_chan <- true
+    done_chan[index] <- true
 }
 
-func sendRequest(raddr *net.TCPAddr, req_num int) {
+func sendRequest(index int, raddr *net.TCPAddr, req_num int) {
     conn, err := net.DialTCP("tcp", nil, raddr)
     if err != nil {
         fmt.Println("connect failed")
         return
     }
 
-    go recvResponse(conn, req_num)
+    go recvResponse(index, conn, req_num)
 
     i := 0
     for {
@@ -73,21 +76,35 @@ func main() {
         os.Exit(3)
     }
 
-    done_chan = make(chan bool)
+    done_chan = make([]chan bool, ConnNum)
 
     data = filedata
-
-    request_num := 10000
 
     raddr, err := net.ResolveTCPAddr("tcp", Host + ":" + Port)
     if err != nil {
         fmt.Println("resolve failed")
     }
 
-    go sendRequest(raddr, request_num)
+    index := 0
+    for {
+        go sendRequest(index, raddr, RequestNum)
 
-    done := <-done_chan
-    fmt.Println(done)
+        index++
+        if index >= ConnNum {
+            break
+        }
+    }
+
+    i := 0
+    for {
+        <- done_chan[i]
+        i++
+        if i >= ConnNum {
+            break
+        }
+    }
+
+    fmt.Println("done")
 
     return
 }
