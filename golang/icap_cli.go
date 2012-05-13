@@ -68,7 +68,7 @@ var req_data chan ReqData
 var resp_data chan RespData
 var done_chan chan bool
 
-var conntions []IcapConn
+var connections []IcapConn
 
 var resp_received uint32
 var resp_cnt_lock sync.Mutex
@@ -142,7 +142,7 @@ func sendRequestNew() {
         }
 
         reqd := <-req_data
-        conn_picked := conntions[rand.Int() % ConnNum]
+        conn_picked := connections[rand.Int() % ConnNum]
         conn_picked.send_chan <- 1
         cnt, err := conn_picked.conn.Write([]byte(reqd.data))
         <-conn_picked.send_chan
@@ -336,7 +336,7 @@ func main() {
     resp_data = make(chan RespData, 1024)
     done_chan = make(chan bool)
 
-    conntions = make([]IcapConn, ConnNum)
+    connections = make([]IcapConn, ConnNum)
 
     req_sent = 0
     resp_received = 0
@@ -350,13 +350,13 @@ func main() {
         conn, err := net.DialTCP("tcp", nil, raddr)
         if err != nil {
             fmt.Println("connect failed")
-            conntions[i].ok = false
+            connections[i].ok = false
             return
         } else {
-            conntions[i].conn = conn
-            conntions[i].ok = true
-            conntions[i].send_chan = make(chan int, 1)
-            conntions[i].recv_chan = make(chan int, 1)
+            connections[i].conn = conn
+            connections[i].ok = true
+            connections[i].send_chan = make(chan int, 1)
+            connections[i].recv_chan = make(chan int, 1)
         }
     }
 
@@ -365,7 +365,7 @@ func main() {
     go prepareRequest()
 
     for i := 0; i < ConnNum; i++ {
-        go receiveResponseNew(conntions[i])
+        go receiveResponseNew(connections[i])
     }
     for i := 0; i < ThreadNum; i++ {
         go sendRequestNew()

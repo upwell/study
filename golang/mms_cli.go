@@ -13,11 +13,9 @@ var Port string = "8180"
 
 var ConnNum int = 20
 var RequestNum int = 100000
-
 var Thinktime time.Duration = 20 * time.Millisecond
 
 var done_chan []chan bool
-
 var data []byte
 
 func recvResponse(index int, conn *net.TCPConn, req_num int) {
@@ -51,8 +49,7 @@ func sendRequest(index int, raddr *net.TCPAddr, req_num int) {
 
     go recvResponse(index, conn, req_num)
 
-    i := 0
-    for {
+    for i := 0; i < req_num; i++ {
         cnt, err := conn.Write(data)
         if err != nil {
             fmt.Println("write error", cnt)
@@ -60,16 +57,12 @@ func sendRequest(index int, raddr *net.TCPAddr, req_num int) {
         }
 
         time.Sleep(Thinktime)
-        i++
-        if i >= req_num {
-            fmt.Println("all requests sent")
-            break
-        }
     }
+
+    fmt.Println("all requests sent")
 }
 
 func main() {
-
     filedata, err := ioutil.ReadFile("test.data")
     if err != nil {
         fmt.Println("read file test.data error");
@@ -86,22 +79,12 @@ func main() {
     }
 
     index := 0
-    for {
+    for index := 0; index < ConnNum; index++ {
         go sendRequest(index, raddr, RequestNum)
-
-        index++
-        if index >= ConnNum {
-            break
-        }
     }
 
-    i := 0
-    for {
+    for i := 0; i < ConnNum; i++ {
         <- done_chan[i]
-        i++
-        if i >= ConnNum {
-            break
-        }
     }
 
     fmt.Println("done")
