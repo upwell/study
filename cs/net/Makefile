@@ -1,5 +1,10 @@
-all: clean *.c
-	gcc *.c -o foo
+
+BIN = tst_srv.out client.out
+
+all: $(BIN)
+
+$(BIN): %.out: %.c
+	gcc $^ -o $@
 
 clean:
-	rm -rf foo
+	rm -rf $(BIN)

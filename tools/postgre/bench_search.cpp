@@ -50,9 +50,14 @@ bool is_id_exist(PGconn *c, int id)
     return rtn;
 }
 
-void run(int cnt)
+void run(const string &host, int cnt)
 {
-    string conninfo = "host='localhost' port=5432 dbname='test'";
+    string conninfo;
+    if(!host.compare("-d"))
+        conninfo = "host='/tmp' port='5432' dbname='test'";
+    else
+        conninfo = "host='" + host 
+            + "' port=5432 dbname='test'";
 
     PGconn *conn;
     conn = PQconnectdb(conninfo.c_str());
@@ -61,7 +66,8 @@ void run(int cnt)
         cout << "connected" << endl;
     } else
     {
-        cout << "error happened" << endl;
+        cout << "error happened : " << 
+            PQerrorMessage(conn) << endl;
         PQfinish(conn);
         return;
     }
@@ -105,15 +111,19 @@ void run(int cnt)
 int main(int argc, char *argv[])
 {
     int cnt = 0;
+    string host;
 
-    if(argc != 2)
+    if(argc != 3)
     {
-        cout << "usage " << argv[0] << " <search_cnt>" << endl;
+        cout << "usage " << argv[0] << " <host> <search_cnt>" << endl;
         return -1;
     } else
-        cnt = atoi(argv[1]);
+    {
+        host = argv[1];
+        cnt = atoi(argv[2]);
+    }
 
-    run(cnt);
+    run(host, cnt);
 
     return 0;
 }
