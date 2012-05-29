@@ -31,6 +31,13 @@ type CfgReq struct {
     Username string
 }
 
+type IcapConn struct {
+    conn *net.TCPConn
+    ok bool
+    recv_chan chan int
+    send_chan chan int
+}
+
 type Request struct {
     start Time
     end Time
@@ -61,11 +68,16 @@ var req_data chan ReqData
 var resp_data chan RespData
 var done_chan chan bool
 
+var connections []IcapConn
 
-//var net_lock sync.Mutex
-//var map_lock sync.Mutex
-var send_lock sync.Mutex
-var recv_lock sync.Mutex
+var resp_received uint32
+var resp_cnt_lock sync.Mutex
+
+var req_sent uint32
+var req_cnt_lock sync.Mutex
+
+//var send_lock sync.Mutex
+//var recv_lock sync.Mutex
 
 func getMd5(in uint32) string {
     hash := md5.New()
@@ -122,18 +134,18 @@ func prepareRequest() {
     }
 }
 
-func sendRequestNew(conn *net.TCPConn) {
-    var i uint32 = 0
+func sendRequestNew() {
     for {
-        if i >= AvgReqNum {
+        if req_sent >= TotalReqNum {
             fmt.Println("send request completed")
             return
         }
 
         reqd := <-req_data
-        send_lock.Lock()
-        cnt, err := conn.Write([]byte(reqd.data))
-        send_lock.Unlock()
+        conn_picked := connections[rand.Int() % ConnNum]
+        conn_picked.send_chan <- 1
+        cnt, err := conn_picked.conn.Write([]byte(reqd.data))
+        <-conn_picked.send_chan
 
         start_time := Now()
         end_time := start_time
@@ -148,34 +160,39 @@ func sendRequestNew(conn *net.TCPConn) {
             fmt.Println("write error %d", cnt)
 	    break;
         }
-        i++
+
+        req_cnt_lock.Lock()
+        req_sent++
+        req_cnt_lock.Unlock()
     }
 }
 
-func receiveResponseNew(conn *net.TCPConn) {
-    var i uint32 = 0
+func receiveResponseNew(conn IcapConn) {
     var data string = ""
 
     for {
         buff := make([]byte, 4096)
 
-        if i >= AvgReqNum {
+        if resp_received >= TotalReqNum {
             fmt.Println("receive response completed");
             return
         }
 
-        recv_lock.Lock()
-        n, err := conn.Read(buff)
-        recv_lock.Unlock()
+        conn.recv_chan <- 1
+        n, err := conn.conn.Read(buff)
         if err != nil {
             fmt.Println("read error");
             return
         }
+        <-conn.recv_chan
 
         data += string(buff[0:n])
 
         for strings.Contains(data, "\r\n\r\n") {
-            i++
+            resp_cnt_lock.Lock()
+            resp_received++
+            resp_cnt_lock.Unlock()
+
             pos := strings.Index(data, "\r\n\r\n")
             tmp_data := data[0:pos+4]
             data = data[pos+4:]
@@ -320,26 +337,39 @@ func main() {
     resp_data = make(chan RespData, 1024)
     done_chan = make(chan bool)
 
+    connections = make([]IcapConn, ConnNum)
+
+    req_sent = 0
+    resp_received = 0
+
     raddr, err := net.ResolveTCPAddr("tcp", Host + ":" + Port)
     if err != nil {
         fmt.Println("resolve failed")
     }
 
-    conn, err := net.DialTCP("tcp", nil, raddr)
-    //conn, err := net.Dial("tcp", Host + ":" + Port)
-    if err != nil {
-        fmt.Println("connect failed")
+    for i := 0; i < ConnNum; i++ {
+        conn, err := net.DialTCP("tcp", nil, raddr)
+        if err != nil {
+            fmt.Println("connect failed")
+            connections[i].ok = false
+            return
+        } else {
+            connections[i].conn = conn
+            connections[i].ok = true
+            connections[i].send_chan = make(chan int, 1)
+            connections[i].recv_chan = make(chan int, 1)
+        }
     }
 
     g_start := Now()
 
     go prepareRequest()
 
-    for i := 0; i < ThreadNum; i++ {
-        go receiveResponseNew(conn)
+    for i := 0; i < ConnNum; i++ {
+        go receiveResponseNew(connections[i])
     }
     for i := 0; i < ThreadNum; i++ {
-        go sendRequestNew(conn)
+        go sendRequestNew()
     }
 
     go parseResponse()
