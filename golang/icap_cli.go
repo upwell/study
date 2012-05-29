@@ -146,6 +146,7 @@ func sendRequestNew(conn *net.TCPConn) {
 
         if err != nil {
             fmt.Println("write error %d", cnt)
+	    break;
         }
         i++
     }
