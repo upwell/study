@@ -1,0 +1,22 @@
+
+global get_work_cnts
+
+probe process("/usr/iwss/tmurld").function("GetWork")
+{
+	get_work_cnts[tid()]++	
+}
+
+probe timer.s(5)
+{
+	printf("********************\n")
+	
+	foreach( t in get_work_cnts- limit 10 )
+	{
+		printf("Thread {%d} - [%d]\n", t, get_work_cnts[t])
+	}
+
+	printf("********************\n")
+
+	delete get_work_cnts
+}
+

@@ -1,0 +1,42 @@
+
+#probe process("/usr/iwss/tmurld").statement("*@ReturnThread.cpp:268")
+#{
+#	printf("queue size [%d], result [%d]\n", $queueSize, $rslt)
+#}
+
+global start1
+global start2
+
+global avg1
+global avg2
+
+probe process("/usr/iwss/tmurld").statement("*@ReturnThread.cpp:291")
+{
+	start1 = gettimeofday_us()
+}
+
+probe process("/usr/iwss/tmurld").statement("*@ReturnThread.cpp:328")
+{
+	start2 = gettimeofday_us()
+}
+
+probe process("/usr/iwss/tmurld").statement("*@ReturnThread.cpp:360")
+{
+	if(start1 && start2)
+	{
+		elapsed = gettimeofday_us() - start2
+		avg1 <<< (start2-start1)
+		avg2 <<< elapsed
+	}
+}
+
+probe timer.s(2)
+{
+	if(@count(avg1) > 0)
+		printf("Max [%d] [%d] || Avg [%d] [%d]\n",
+			@max(avg1), @max(avg2), @avg(avg1), @avg(avg2))
+	
+	delete avg1
+	delete avg2
+}
+

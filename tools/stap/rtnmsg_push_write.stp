@@ -1,0 +1,120 @@
+
+global get_work_cnts
+global get_work_time
+global get_wait_time
+global get_wait_avg
+
+global push_work_time
+global push_work_cnts
+global push_wait_time
+global push_wait_avg
+
+global write_time
+global write_cnts
+global write_wait_time
+global write_wait_avg
+
+global rtnmsg_addr
+global rtnmsg_end_addr
+
+probe process("/usr/iwss/tmurld").function("returnMsg")
+{
+	if(!rtnmsg_addr)
+		rtnmsg_addr = addr()
+	t = tid()
+	get_work_time[t] = gettimeofday_us()
+}
+
+probe process("/usr/iwss/tmurld").function("returnMsg").return
+{
+	if(!rtnmsg_end_addr)
+		rtnmsg_end_addr = addr()
+	t = tid()
+	if(get_work_time[t])
+	{
+		get_work_cnts[t]++	
+		elapsed = gettimeofday_us() - get_work_time[t]
+		get_wait_time[t] <<< elapsed
+	}
+}
+
+probe process("/usr/iwss/tmurld").function("PushWork")
+{
+	t = tid()
+	if(get_work_time[t])
+		push_work_time[t] = gettimeofday_us()
+}
+
+probe process("/usr/iwss/tmurld").function("PushWork").return
+{
+	t = tid()
+	if(push_work_time[t] && rtnmsg_addr && rtnmsg_end_addr)
+	{
+		addr_f = caller_addr()
+		if(addr_f > rtnmsg_addr && addr_f < rtnmsg_end_addr)
+		{
+			push_work_cnts[t]++	
+			elapsed = gettimeofday_us() - push_work_time[t]
+			push_wait_time[t] <<< elapsed
+		}
+	}
+}
+
+probe process("/usr/iwss/tmurld").statement("returnMsg@WorkThread.cpp:56")
+{
+	t = tid()
+	write_time[t] = gettimeofday_us()
+}
+
+probe process("/usr/iwss/tmurld").statement("returnMsg@WorkThread.cpp:59")
+{
+	t = tid()
+	if(write_time[t])
+	{
+		write_cnts[t]++
+		elapsed = gettimeofday_us() - write_time[t]
+		write_wait_time[t] <<< elapsed
+	}
+}
+
+probe timer.s(5)
+{
+	printf("********************\n")
+	
+	foreach( t in get_work_cnts- limit 10 )
+	{
+		printf("Thread {%d} - [%d] - [%d] - [%d] calls\n", t, get_work_cnts[t],
+			push_work_cnts[t], write_cnts[t])
+	}
+
+	foreach( t in get_wait_time)
+	{
+		get_wait_avg[t] = @avg(get_wait_time[t])
+		push_wait_avg[t] = @avg(push_wait_time[t])
+		write_wait_avg[t] = @avg(write_wait_time[t])
+	}
+
+	foreach( t in get_wait_avg- limit 10)
+	{
+		printf("Thread {%d} - [%d] us - [%d] us - [%d] us\n",
+			t, get_wait_avg[t], push_wait_avg[t], write_wait_avg[t])
+	}
+
+	printf("********************\n")
+
+	delete get_work_cnts
+	delete get_work_time
+	delete get_wait_time
+	delete get_wait_avg
+
+	delete push_work_time
+	delete push_work_cnts
+	delete push_wait_time
+	delete push_wait_avg
+
+	delete write_time
+	delete write_cnts
+	delete write_wait_time
+	delete write_wait_avg
+}
+

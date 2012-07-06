@@ -1,0 +1,44 @@
+
+global futex_cnts
+
+global rtn_start_addr
+global rtn_end_addr
+
+probe process("/usr/iwss/tmurld").function("returnMsg")
+{
+	if(!rtn_start_addr)
+		rtn_start_addr = addr()
+}
+
+probe process("/usr/iwss/tmurld").function("returnMsg").return
+{
+	if(!rtn_end_addr)
+		rtn_end_addr = addr()
+}
+
+probe syscall.write.return
+{
+
+	if(pid() == target())
+	{
+		if(rtn_start_addr && rtn_end_addr)
+		{
+			printf("[%x] [%x] [%x]\n", rtn_start_addr,
+				caller_addr(), rtn_end_addr)
+			waddr = caller_addr()
+			if(waddr > rtn_start_addr && waddr < rtn_end_addr)
+				futex_cnts[tid()]++
+		}
+	}
+}
+
+probe timer.s(2)
+{
+	printf("********************\n")
+	foreach( tid in futex_cnts- limit 20 )
+		printf("[%d] - [%d]\n", tid, futex_cnts[tid])
+	printf("********************\n")
+
+	delete futex_cnts
+}
+

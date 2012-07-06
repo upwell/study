@@ -1,0 +1,19 @@
+
+global futex_cnts
+
+probe syscall.call
+{
+	if(pid() == target() && name == "write")
+		futex_cnts[tid()]++
+}
+
+probe timer.s(5)
+{
+	printf("********************\n")
+	foreach( tid in futex_cnts- limit 20 )
+		printf("[%d] - [%d]\n", tid, futex_cnts[tid])
+	printf("********************\n")
+
+	delete futex_cnts
+}
+

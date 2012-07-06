@@ -1,0 +1,21 @@
+
+global thread_lock_cnts
+
+probe process("/lib/libpthread.so.0").function("pthread_mutex_lock")
+{
+	if(pid() == target())
+		thread_lock_cnts[tid()]++
+}
+
+probe timer.s(5)
+{
+	printf("********************\n")
+	
+	foreach(tid in thread_lock_cnts- limit 10)
+		printf("[%5d] - [%10d]\n", tid, thread_lock_cnts[tid])
+
+	printf("********************\n")
+	
+	delete thread_lock_cnts
+}
+

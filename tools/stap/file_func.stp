@@ -1,0 +1,40 @@
+global fc_start
+global fc_cost
+
+global total_fc_cost
+
+probe process("/usr/iwss/tmurld").function("*@AsyncTmufe.cpp")
+{
+	fc_start[tid(), probefunc()] = gettimeofday_us()
+}
+
+probe process("/usr/iwss/tmurld").function("*@AsyncTmufe.cpp").return
+{
+	t = tid()
+	name = probefunc()
+	if(fc_start[t, name])
+	{
+		elapsed = gettimeofday_us() - fc_start[t, name]
+		fc_cost[t, name] <<< elapsed
+	}
+}
+
+probe timer.s(5)
+{
+	foreach([t, name] in fc_cost)
+	{
+		total_fc_cost[name] <<< @avg(fc_cost[t, name])
+	}
+
+	printf("%20s %10s\n", "Function", "Cost")
+	foreach(name in total_fc_cost)
+	{
+		printf("%20s %10d\n", name, @avg(total_fc_cost[name]))
+	}
+	printf("******************************\n")
+
+	delete fc_start
+	delete fc_cost
+	delete total_fc_cost
+}
+

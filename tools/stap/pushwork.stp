@@ -1,0 +1,51 @@
+
+global get_work_cnts
+global get_work_time
+global get_wait_time
+global get_wait_avg
+
+probe process("/usr/iwss/tmurld").function("PushWork")
+{
+	t = tid()
+	get_work_time[t] = gettimeofday_us()
+}
+
+probe process("/usr/iwss/tmurld").function("PushWork").return
+{
+	t = tid()
+	if(get_work_time[t])
+	{
+		get_work_cnts[t]++	
+		elapsed = gettimeofday_us() - get_work_time[t]
+		get_wait_time[t] <<< elapsed
+	}
+}
+
+probe timer.s(5)
+{
+	printf("********************\n")
+	
+	foreach( t in get_work_cnts- limit 20 )
+	{
+		printf("Thread {%d} - [%d] calls\n", t, get_work_cnts[t])
+	}
+
+
+	foreach( t in get_wait_time)
+	{
+		get_wait_avg[t] = @avg(get_wait_time[t])
+	}
+
+	foreach( t in get_wait_avg- limit 20)
+	{
+		printf("Thread {%d} - [%d] us\n", t, get_wait_avg[t])
+	}
+
+	printf("********************\n")
+
+	delete get_work_cnts
+	delete get_work_time
+	delete get_wait_time
+	delete get_wait_avg
+}
+

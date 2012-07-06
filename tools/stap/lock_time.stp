@@ -1,0 +1,52 @@
+
+global thread_lock_cnts
+global thread_blocktime
+global lock_waits
+
+probe process("/lib/libpthread.so.0").function("pthread_mutex_lock")
+{
+	if(pid() == target())
+	{
+		t = tid()
+		thread_blocktime[t] = gettimeofday_us()
+		thread_lock_cnts[t]++
+	}
+}
+
+probe process("/lib/libpthread.so.0").function("pthread_mutex_lock").return
+{
+	if(pid() == target())
+	{
+		t = tid()
+		ts = thread_blocktime[t]
+		if(ts)
+		{
+			elapsed = gettimeofday_us() - ts
+			lock_waits[t, thread_lock_cnts[t]] = elapsed
+		}
+	}
+}
+
+probe end
+{
+	printf("********************\n")
+
+	foreach( t in thread_lock_cnts- limit 10 )
+	{
+		printf("Thread {%d} - [%d] calls\n", t, thread_lock_cnts[t])
+		printf("------------------------------\n");
+		foreach( [tid,i] in lock_waits- limit 20)
+		{
+			if(tid == t)
+				printf("lock takes [%d] us\n", lock_waits[t, i]);
+		}
+		printf("------------------------------\n\n");
+	}
+	
+	printf("********************\n")
+	
+	delete thread_lock_cnts
+	delete lock_waits
+	delete thread_blocktime
+}
+
