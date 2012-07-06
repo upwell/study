@@ -158,6 +158,7 @@ func sendRequestNew() {
 
         if err != nil {
             fmt.Println("write error %d", cnt)
+	    break;
         }
 
         req_cnt_lock.Lock()
