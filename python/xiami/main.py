@@ -100,7 +100,8 @@ class ThreadDownloading(threading.Thread):
                     ('Accept-Charset', 'UTF-8,*;q=0.5'),
                     #('Accept-Encoding', 'gzip,deflate'),
                     ('Accept-Lanaguage', 'en-US,en;q=0.8'),
-                    ('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.81 Safari/537.1')
+                    ('User-Agent',
+                        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.81 Safari/537.1')
                     ]
             urllib2.install_opener(opener)
             u = urllib2.urlopen(url)
@@ -134,12 +135,57 @@ class ThreadDownloading(threading.Thread):
         wx.PostEvent(self.notify_window, DownloadEvent(self.index, STATUS_SUCCEED))
         return
 
+class Settings(wx.Frame):
+
+    def __init__(self, parent, title):
+        super(Settings, self).__init__(parent, title='Settings',
+                size=(400, 300))
+
+        self.InitUI()
+        self.Centre()
+        self.Show()
+
+    def InitUI(self):
+        panel = wx.Panel(self)
+
+        sizer = wx.GridBagSizer(4, 4)
+
+        text_setting = wx.StaticText(panel, label='Settings')
+        sizer.Add(text_setting, pos=(0, 0), flag=wx.TOP|wx.LEFT|wx.BOTTOM,
+                border=10)
+
+        line = wx.StaticLine(panel)
+        sizer.Add(line, pos=(1, 0), span=(1, 4),
+                flag=wx.EXPAND|wx.BOTTOM, border=10)
+
+        text_downfolder = wx.StaticText(panel, label='Download Folder')
+        sizer.Add(text_downfolder, pos=(2, 0), flag=wx.LEFT, border=10)
+
+        tcl_downfolder = wx.TextCtrl(panel)
+        sizer.Add(tcl_downfolder, pos=(2, 1), span=(1, 2),
+                flag=wx.EXPAND)
+
+        btn_downfolder = wx.Button(panel, label='Browse...')
+        sizer.Add(btn_downfolder, pos=(2, 3), flag=wx.RIGHT, border=10)
+
+        line = wx.StaticLine(panel)
+        sizer.Add(line, pos=(3, 0), span=(1, 4),
+                flag=wx.EXPAND|wx.BOTTOM|wx.TOP, border=10)
+
+        btn_ok = wx.Button(panel, label='Ok')
+        sizer.Add(btn_ok, pos=(4, 2))
+        btn_cancel = wx.Button(panel, label='Cancel')
+        sizer.Add(btn_cancel, pos=(4, 3))
+
+        sizer.AddGrowableCol(1)
+        panel.SetSizer(sizer)
+
 
 class Main(wx.Frame):
 
     def __init__(self, parent, title):
         super(Main, self).__init__(parent, title='Xiami Downloader',
-            size=(500, 300))
+            size=(600, 500))
 
         self.InitUI()
         self.Centre()
@@ -152,6 +198,18 @@ class Main(wx.Frame):
         font.SetPointSize(9)
 
         vbox = wx.BoxSizer(wx.VERTICAL)
+
+        # Toolbar
+        toolbar = self.CreateToolBar()
+        toolbar.SetToolBitmapSize((16, 16))
+        toolbar.AddSeparator()
+        setting_tool = toolbar.AddLabelTool(wx.ID_ANY,
+                'Settings', wx.Bitmap('settings.png'))
+        toolbar.AddSeparator()
+        toolbar.Realize()
+
+        self.Bind(wx.EVT_TOOL, self.OnSettings, setting_tool)
+        # end of toolbar
 
         # URL row
         hbox_url = wx.BoxSizer(wx.HORIZONTAL)
@@ -249,6 +307,9 @@ class Main(wx.Frame):
             message = 'Unknown'
 
         self.song_list.SetStringItem(index, 3, message)
+
+    def OnSettings(self, e):
+        Settings(None, title='Settings')
 
 
 def main():
