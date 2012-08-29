@@ -73,7 +73,7 @@ class ThreadDownloading(threading.Thread):
             opener.addheaders = [
                     ('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'),
                     ('Accept-Charset', 'UTF-8,*;q=0.5'),
-                    ('Accept-Encoding', 'gzip,deflate'),
+                    #('Accept-Encoding', 'gzip,deflate'),
                     ('Accept-Lanaguage', 'en-US,en;q=0.8'),
                     ('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.81 Safari/537.1')
                     ]
@@ -179,6 +179,8 @@ class Main(wx.Frame):
 
                 albumAddr = "http://www.xiami.com/song/playlist/id/" + albumId + "/type/1"
                 self.mp3s = ParseXMLtoURLs(AttriveXML(albumAddr))
+
+                self.song_list.DeleteAllItems()
 
                 index = 0
                 for mp3 in self.mp3s:
