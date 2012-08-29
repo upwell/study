@@ -46,6 +46,7 @@ def ParseXMLtoURLs(data):
 
     return mp3s
 
+''' Self listctrl class for AutoWidth '''
 class FlexCtrlList(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
 
     def __init__(self, parent, ID, pos=wx.DefaultPosition,
@@ -54,17 +55,41 @@ class FlexCtrlList(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         listmix.ListCtrlAutoWidthMixin.__init__(self)
         self.setResizeColumn(0)
 
+# Define notification event for thread completion
+EVT_RESULT_ID = wx.NewId()
 
+STATUS_FAILED = 0
+STATUS_SUCCEED = 1
+STATUS_START = 2
+
+def EVT_RESULT(win, func):
+    """Define Result Event."""
+    win.Connect(-1, -1, EVT_RESULT_ID, func)
+
+class DownloadEvent(wx.PyEvent):
+
+    def __init__(self, index, status):
+        wx.PyEvent.__init__(self)
+        self.SetEventType(EVT_RESULT_ID)
+        self.index = index
+        self.status = status
+
+
+''' Downlading thread '''
 class ThreadDownloading(threading.Thread):
 
-    def __init__(self, index, mp3):
+    def __init__(self, window, index, mp3):
         threading.Thread.__init__(self)
+        self.notify_window = window
         self.index = index
         self.mp3 = mp3
 
     def run(self):
 
         url = self.mp3.url
+
+        wx.PostEvent(self.notify_window,
+            DownloadEvent(self.index, STATUS_START))
 
         try:
             #keepalive_handler = HTTPHandler()
@@ -82,6 +107,8 @@ class ThreadDownloading(threading.Thread):
 
         except urllib2.URLError, e:
             print 'url open error:', e
+            wx.PostEvent(self.notify_window,
+                    DownloadEvent(self.index, STATUS_FAILED))
             return
 
         filename = self.mp3.name + ".mp3"
@@ -100,8 +127,11 @@ class ThreadDownloading(threading.Thread):
             tag.update()
         except IOError, e:
             print 'operate file error:', e
+            wx.PostEvent(self.notify_window,
+                    DownloadEvent(self.index, STATUS_FAILED))
             return
 
+        wx.PostEvent(self.notify_window, DownloadEvent(self.index, STATUS_SUCCEED))
         return
 
 
@@ -149,7 +179,6 @@ class Main(wx.Frame):
         self.song_list.InsertColumn(2, 'Album')
         self.song_list.InsertColumn(3, 'Status')
 
-
         hbox_album.Add(self.song_list, 1, wx.ALL|wx.EXPAND, 5)
 
         vbox.Add(hbox_album, proportion=1,
@@ -165,6 +194,9 @@ class Main(wx.Frame):
 
         down_btn.Bind(wx.EVT_BUTTON, self.DownBtnClicked)
         # end of download button
+
+        # bind dowloading event
+        EVT_RESULT(self, self.OnDownloadEvent)
 
         self.panel.SetSizer(vbox)
 
@@ -197,11 +229,26 @@ class Main(wx.Frame):
 
         index = 0
         for mp3 in self.mp3s:
-            thread = ThreadDownloading(index, mp3)
+            thread = ThreadDownloading(self, index, mp3)
             thread.setDaemon(True)
             thread.start()
             index += 1
 
+    def OnDownloadEvent(self, e):
+        index = e.index
+        rslt = e.status
+
+        message = ''
+        if rslt == STATUS_SUCCEED:
+            message = 'Done'
+        elif rslt == STATUS_FAILED:
+            message = 'Failed'
+        elif rslt == STATUS_START:
+            message = 'Downloading...'
+        else:
+            message = 'Unknown'
+
+        self.song_list.SetStringItem(index, 3, message)
 
 
 def main():
