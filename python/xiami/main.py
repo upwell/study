@@ -13,7 +13,6 @@ import ConfigParser
 import threading
 
 from xml.dom.minidom import parseString
-#from urlgrabber.keepalive import HTTPHandler
 
 import addrdecoder
 from addrdecoder import GetLocation
@@ -114,7 +113,7 @@ class DownloadEvent(wx.PyEvent):
 
 
 ''' Downlading thread '''
-class ThreadDownloading(threading.Thread):
+class DownloadingThread(threading.Thread):
 
     def __init__(self, window, index, mp3):
         threading.Thread.__init__(self)
@@ -163,7 +162,7 @@ class ThreadDownloading(threading.Thread):
             local_file.close()
 
             tag = eyeD3.Tag()
-            tag.link(filename)
+            tag.link(file_path)
             tag.header.setVersion(eyeD3.ID3_V2_3)
             tag.encoding = '\x01'
             tag.setArtist(self.mp3.artist)
@@ -182,7 +181,7 @@ class Settings(wx.Frame):
 
     def __init__(self, parent, title):
         super(Settings, self).__init__(parent, title='Settings',
-                size=(400, 300))
+                size=(400, 200))
 
         self.InitUI()
         self.Centre()
@@ -204,8 +203,8 @@ class Settings(wx.Frame):
         text_downfolder = wx.StaticText(panel, label='Download Folder')
         sizer.Add(text_downfolder, pos=(2, 0), flag=wx.LEFT, border=10)
 
-        tcl_downfolder = wx.TextCtrl(panel)
-        sizer.Add(tcl_downfolder, pos=(2, 1), span=(1, 2),
+        self.tcl_downfolder = wx.TextCtrl(panel)
+        sizer.Add(self.tcl_downfolder, pos=(2, 1), span=(1, 2),
                 flag=wx.EXPAND)
 
         btn_downfolder = wx.Button(panel, label='Browse...')
@@ -223,8 +222,22 @@ class Settings(wx.Frame):
         sizer.AddGrowableCol(1)
         panel.SetSizer(sizer)
 
+        btn_ok.Bind(wx.EVT_BUTTON, self.OnOkClicked)
+        btn_cancel.Bind(wx.EVT_BUTTON, self.OnCancelClicked)
+
         # set download folder
-        tcl_downfolder.SetValue(global_setting.dpath)
+        self.tcl_downfolder.SetValue(global_setting.dpath)
+
+    def OnOkClicked(self, e):
+        global global_setting
+
+        global_setting.dpath = self.tcl_downfolder.GetValue()
+        global_setting.WriteConfigToFile()
+
+        self.Close()
+
+    def OnCancelClicked(self, e):
+        self.Close()
 
 
 class Main(wx.Frame):
@@ -308,16 +321,24 @@ class Main(wx.Frame):
         url = self.url_text.GetValue()
         if len(url) > 0:
             url = url.strip()
+            albumAddr = ''
+
             m = re.search('/album/[0-9]+$', url)
             if m is not None:
                 m = re.search('[0-9]+$', url)
                 albumId = m.group()
-
                 albumAddr = "http://www.xiami.com/song/playlist/id/" + albumId + "/type/1"
+            else:
+                m = re.search('/showcollect/id/[0-9]+$', url)
+                if m is not None:
+                    m = re.search('[0-9]+$', url)
+                    albumId = m.group()
+                    albumAddr = "http://www.xiami.com/song/playlist/id/" + albumId + "/type/3"
+
+            if len(albumAddr) > 0 :
                 self.mp3s = ParseXMLtoURLs(AttriveXML(albumAddr))
 
                 self.song_list.DeleteAllItems()
-
                 index = 0
                 for mp3 in self.mp3s:
                     self.song_list.InsertStringItem(index, mp3.name)
@@ -333,7 +354,7 @@ class Main(wx.Frame):
 
         index = 0
         for mp3 in self.mp3s:
-            thread = ThreadDownloading(self, index, mp3)
+            thread = DownloadingThread(self, index, mp3)
             thread.setDaemon(True)
             thread.start()
             index += 1
