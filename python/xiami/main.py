@@ -5,9 +5,10 @@
 import wx
 import wx.lib.mixins.listctrl as listmix
 
-import sys
+import sys, os
 import urllib2, urllib
 import re, time, eyeD3
+import ConfigParser
 
 import threading
 
@@ -17,6 +18,43 @@ from xml.dom.minidom import parseString
 import addrdecoder
 from addrdecoder import GetLocation
 from mp3info import Mp3Info
+
+# global variables
+CONFIG_FILE = 'settings.cfg'
+
+OS_TYPE = ''
+PATH_SEP = ''
+HOME_DIR = ''
+CURR_DIR = ''
+
+global_setting = None
+
+class SettingConfig():
+
+    def __init__(self):
+        self.LoadDefaultSettings()
+
+    def LoadDefaultSettings(self):
+        self.dpath = HOME_DIR + PATH_SEP + 'Music'
+
+    def LoadConfigFromFile(self):
+        config = ConfigParser.ConfigParser(allow_no_value=True)
+        config.read(CURR_DIR + PATH_SEP + CONFIG_FILE)
+
+        value = config.get('core', 'download_path')
+        if len(value) > 0:
+            self.dpath = value
+
+    def WriteConfigToFile(self):
+        config = ConfigParser.ConfigParser(allow_no_value=True)
+        config_file = CURR_DIR + PATH_SEP + CONFIG_FILE
+        config.read(config_file)
+
+        config.set('core', 'download_path', self.dpath)
+
+        with open(config_file, 'wb') as configdata:
+            config.write(configdata)
+
 
 def AttriveXML(albumAddr):
     try:
@@ -114,8 +152,13 @@ class ThreadDownloading(threading.Thread):
 
         filename = self.mp3.name + ".mp3"
         filename = filename.replace('/', ' or ')
+
+        if not os.path.exists(global_setting.dpath):
+            os.makedirs(global_setting.dpath)
+
+        file_path = global_setting.dpath + PATH_SEP + filename
         try:
-            local_file = open(filename, 'w')
+            local_file = open(file_path, 'w')
             local_file.write(u.read())
             local_file.close()
 
@@ -179,6 +222,9 @@ class Settings(wx.Frame):
 
         sizer.AddGrowableCol(1)
         panel.SetSizer(sizer)
+
+        # set download folder
+        tcl_downfolder.SetValue(global_setting.dpath)
 
 
 class Main(wx.Frame):
@@ -311,8 +357,21 @@ class Main(wx.Frame):
     def OnSettings(self, e):
         Settings(None, title='Settings')
 
+def init():
+    global HOME_DIR
+    global PATH_SEP
+    global CURR_DIR
+    global global_setting
+
+    HOME_DIR = os.getenv('HOME')
+    PATH_SEP = os.sep
+    CURR_DIR = os.curdir
+
+    global_setting = SettingConfig()
+    global_setting.LoadConfigFromFile()
 
 def main():
+    init()
     app = wx.App()
     Main(None, title='Xiami Downloader')
     app.MainLoop()
