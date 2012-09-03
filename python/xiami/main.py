@@ -17,6 +17,7 @@ from xml.dom.minidom import parseString
 import addrdecoder
 from addrdecoder import GetLocation
 from mp3info import Mp3Info
+from artisthot import ArtistHotParser
 
 # global variables
 CONFIG_FILE = 'settings.cfg'
@@ -55,9 +56,9 @@ class SettingConfig():
             config.write(configdata)
 
 
-def AttriveXML(albumAddr):
+def AttriveData(url):
     try:
-        u = urllib2.urlopen(albumAddr)
+        u = urllib2.urlopen(url)
     except urllib2.URLError, e:
         print "urlopen error:", e
         return ""
@@ -317,26 +318,53 @@ class Main(wx.Frame):
 
         self.panel.SetSizer(vbox)
 
+    def GetAlbumAddr(self, url):
+        albumAddr = ''
+
+        m = re.search('/album/[0-9]+$', url)
+        if m is not None:
+            m = re.search('[0-9]+$', url)
+            albumId = m.group()
+            albumAddr = "http://www.xiami.com/song/playlist/id/" + albumId + "/type/1"
+            return albumAddr
+
+        m = re.search('/showcollect/id/[0-9]+$', url)
+        if m is not None:
+            m = re.search('[0-9]+$', url)
+            albumId = m.group()
+            albumAddr = "http://www.xiami.com/song/playlist/id/" + albumId + "/type/3"
+            return albumAddr
+
+        m = re.search('/artist/[0-9]+$', url)
+        if m is not None:
+            data = AttriveData(url)
+            if len(data) > 0:
+                parser = ArtistHotParser()
+                parser.feed(data)
+
+                baseUrl = 'http://www.xiami.com/song/playlist/id/'
+                first = True
+                print parser.data
+                for songId in parser.data:
+                    if first:
+                        baseUrl += songId
+                        first = False
+                    else:
+                        baseUrl += ',' + songId
+                baseUrl += '/object_name/default/object_id/0'
+                return baseUrl
+
+        return albumAddr
+
+
     def UrlInfoBtnClicked(self, e):
         url = self.url_text.GetValue()
+        url = url.strip()
         if len(url) > 0:
-            url = url.strip()
-            albumAddr = ''
-
-            m = re.search('/album/[0-9]+$', url)
-            if m is not None:
-                m = re.search('[0-9]+$', url)
-                albumId = m.group()
-                albumAddr = "http://www.xiami.com/song/playlist/id/" + albumId + "/type/1"
-            else:
-                m = re.search('/showcollect/id/[0-9]+$', url)
-                if m is not None:
-                    m = re.search('[0-9]+$', url)
-                    albumId = m.group()
-                    albumAddr = "http://www.xiami.com/song/playlist/id/" + albumId + "/type/3"
+            albumAddr = self.GetAlbumAddr(url)
 
             if len(albumAddr) > 0 :
-                self.mp3s = ParseXMLtoURLs(AttriveXML(albumAddr))
+                self.mp3s = ParseXMLtoURLs(AttriveData(albumAddr))
 
                 self.song_list.DeleteAllItems()
                 index = 0
