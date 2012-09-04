@@ -344,7 +344,6 @@ class Main(wx.Frame):
 
                 baseUrl = 'http://www.xiami.com/song/playlist/id/'
                 first = True
-                print parser.data
                 for songId in parser.data:
                     if first:
                         baseUrl += songId
