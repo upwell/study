@@ -4,6 +4,7 @@
 
 import wx
 import wx.lib.mixins.listctrl as listmix
+import wx.lib.filebrowsebutton as filebrowse
 
 import sys, os
 import urllib2, urllib
@@ -201,15 +202,11 @@ class Settings(wx.Frame):
         sizer.Add(line, pos=(1, 0), span=(1, 4),
                 flag=wx.EXPAND|wx.BOTTOM, border=10)
 
-        text_downfolder = wx.StaticText(panel, label='Download Folder')
-        sizer.Add(text_downfolder, pos=(2, 0), flag=wx.LEFT, border=10)
-
-        self.tcl_downfolder = wx.TextCtrl(panel)
-        sizer.Add(self.tcl_downfolder, pos=(2, 1), span=(1, 2),
-                flag=wx.EXPAND)
-
-        btn_downfolder = wx.Button(panel, label='Browse...')
-        sizer.Add(btn_downfolder, pos=(2, 3), flag=wx.RIGHT, border=10)
+        self.btn_downfolder = filebrowse.DirBrowseButton(
+                panel, labelText='Download Folder',
+                startDirectory=global_setting.dpath,
+                changeCallback = self.DbbCallback)
+        sizer.Add(self.btn_downfolder, pos=(2, 0), span=(2, 4), flag=wx.EXPAND, border=10)
 
         line = wx.StaticLine(panel)
         sizer.Add(line, pos=(3, 0), span=(1, 4),
@@ -226,19 +223,21 @@ class Settings(wx.Frame):
         btn_ok.Bind(wx.EVT_BUTTON, self.OnOkClicked)
         btn_cancel.Bind(wx.EVT_BUTTON, self.OnCancelClicked)
 
-        # set download folder
-        self.tcl_downfolder.SetValue(global_setting.dpath)
+        self.btn_downfolder.SetValue(global_setting.dpath)
 
     def OnOkClicked(self, e):
         global global_setting
 
-        global_setting.dpath = self.tcl_downfolder.GetValue()
+        global_setting.dpath = self.btn_downfolder.GetValue()
         global_setting.WriteConfigToFile()
 
         self.Close()
 
     def OnCancelClicked(self, e):
         self.Close()
+
+    def DbbCallback(self, e):
+        pass
 
 
 class Main(wx.Frame):
