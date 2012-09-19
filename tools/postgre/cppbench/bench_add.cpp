@@ -53,7 +53,7 @@ bool is_id_exist(PGconn *c, int id)
 
 void run(int cnt)
 {
-    string conninfo = "host='localhost' port=5432 dbname='test'";
+    string conninfo = "host='localhost' port=5432 dbname='test' user='postgres'";
 
     PGconn *conn;
     conn = PQconnectdb(conninfo.c_str());
