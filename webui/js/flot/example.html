@@ -1,0 +1,59 @@
+<html>
+    <head>
+        <script language="javascript" type="text/javascript" src="../jquery/jquery-1.8.2.min.js"></script>
+        <script language="javascript" type="text/javascript" src="./jquery.flot.js"></script>
+    </head>
+    <body>
+        <div id="placeholder" style="width:600px;height:300px"></div>
+
+        <script type="text/javascript">
+            $(function() {
+                var d1 = [];
+                for(var i = 0; i < 14; i++)
+                    d1.push([i, i+1]);
+
+                $.plot($("#placeholder"), [
+                        {
+                            data: d1,
+                            bars: { show: true},
+                        }
+                        ], {
+                            grid: { hoverable: true}
+                        });
+
+                function showToolTip(x, y, content) {
+                    $('<div id="tooltip">' + content + '</div>').css ( {
+                        position: 'absolute',
+                        display: 'none',
+                        top: y+5,
+                        left: x+5,
+                        border: '1px solid #fdd',
+                        padding: '2px',
+                        'background-color': '#fee',
+                        opacity: 0.80
+                        }).appendTo("body").fadeIn(100);
+                }
+
+                var previousPoint = null;
+                $("#placeholder").bind("plothover", function(event, pos, item) {
+                        if(item) {
+                            if(previousPoint != item.dataIndex) {
+                                previousPoint = item.dataIndex;
+
+                                $("#tooltip").remove();
+
+                                var x = item.datapoint[0].toFixed(2),
+                                    y = item.datapoint[1].toFixed(2);
+
+                                showToolTip(item.pageX, item.pageY,
+                                    "" + y);
+                            }
+                        } else {
+                            $("#tooltip").remove();
+                            previousPoint = null;
+                        }
+                    });
+            });
+        </script>
+    </body>
+</html>
