@@ -1,59 +1,70 @@
 <html>
-    <head>
-        <script language="javascript" type="text/javascript" src="../jquery/jquery-1.8.2.min.js"></script>
-        <script language="javascript" type="text/javascript" src="./jquery.flot.js"></script>
-    </head>
-    <body>
-        <div id="placeholder" style="width:600px;height:300px"></div>
+<head>
+<script language="javascript" type="text/javascript" src="../jquery/jquery-1.8.2.min.js"></script>
+<script language="javascript" type="text/javascript" src="./jquery.flot.js"></script>
+</head>
+<body>
+<div id="placeholder" style="width:600px;height:500px"></div>
 
-        <script type="text/javascript">
-            $(function() {
-                var d1 = [];
-                for(var i = 0; i < 14; i++)
-                    d1.push([i, i+1]);
+<script language="javascript" type="text/javascript">
+$(function() {
+    var d1 = [];
+    for(var i = 0; i < 14; i++)
+    {
+        d1.push([i+1, i]);
+    }
 
-                $.plot($("#placeholder"), [
-                        {
-                            data: d1,
-                            bars: { show: true},
-                        }
-                        ], {
-                            grid: { hoverable: true}
-                        });
+    var t1 = [];
+    for(var i = 0; i < 14; i++)
+    {
+        t1.push([i, 'Test']);
+    }
 
-                function showToolTip(x, y, content) {
-                    $('<div id="tooltip">' + content + '</div>').css ( {
-                        position: 'absolute',
-                        display: 'none',
-                        top: y+5,
-                        left: x+5,
-                        border: '1px solid #fdd',
-                        padding: '2px',
-                        'background-color': '#fee',
-                        opacity: 0.80
-                        }).appendTo("body").fadeIn(100);
-                }
+    $.plot($("#placeholder"),
+    [
+        {
+        data: d1,
+        bars: { show: true, horizontal: true, align: 'center' },
+        }
+    ],
+    {
+        grid: { hoverable: true },
+        yaxis: { ticks : t1, tickLength: 10}
+    });
 
-                var previousPoint = null;
-                $("#placeholder").bind("plothover", function(event, pos, item) {
-                        if(item) {
-                            if(previousPoint != item.dataIndex) {
-                                previousPoint = item.dataIndex;
+    function showToolTip(x, y, content) {
+        $('<div id="tooltip">' + content + '</div>').css ( {
+            position: 'absolute',
+            display: 'none',
+            top: y,
+            left: x+5,
+            border: '1px solid #fdd',
+            padding: '2px',
+            'background-color': '#fee',
+            opacity: 0.80
+        }).appendTo("body").fadeIn(100);
+    }
 
-                                $("#tooltip").remove();
+    var previousPoint = null;
+    $("#placeholder").bind("plothover", function(event, pos, item) {
+        if(item) {
+            if(previousPoint != item.dataIndex) {
+                previousPoint = item.dataIndex;
 
-                                var x = item.datapoint[0].toFixed(2),
-                                    y = item.datapoint[1].toFixed(2);
+                $("#tooltip").remove();
 
-                                showToolTip(item.pageX, item.pageY,
-                                    "" + y);
-                            }
-                        } else {
-                            $("#tooltip").remove();
-                            previousPoint = null;
-                        }
-                    });
-            });
-        </script>
-    </body>
+                var x = item.datapoint[0].toFixed(2),
+                y = item.datapoint[1].toFixed(2);
+
+                showToolTip(item.pageX, item.pageY,
+                            "" + x);
+            }
+        } else {
+            $("#tooltip").remove();
+            previousPoint = null;
+        }
+    });
+});
+</script>
+</body>
 </html>
