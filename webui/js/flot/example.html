@@ -2,6 +2,9 @@
 <head>
 <script language="javascript" type="text/javascript" src="../jquery/jquery-1.8.2.min.js"></script>
 <script language="javascript" type="text/javascript" src="./jquery.flot.js"></script>
+<!--
+<script language="javascript" type="text/javascript" src="./jquery.flot.barnumbers.js"></script>
+-->
 </head>
 <body>
 <div id="placeholder" style="width:600px;height:500px"></div>
@@ -11,7 +14,10 @@ $(function() {
     var d1 = [];
     for(var i = 0; i < 14; i++)
     {
-        d1.push([i+1, i]);
+        if(i == 13)
+            d1.push([i+100, i]);
+        else
+            d1.push([i+1, i]);
     }
 
     var t1 = [];
@@ -20,11 +26,11 @@ $(function() {
         t1.push([i, 'Test']);
     }
 
-    $.plot($("#placeholder"),
+    var p = $.plot($("#placeholder"),
     [
         {
         data: d1,
-        bars: { show: true, horizontal: true, align: 'center' },
+        bars: { show: true, horizontal: true, align: 'center'},
         }
     ],
     {
@@ -32,6 +38,22 @@ $(function() {
         yaxis: { ticks : t1, tickLength: 10}
     });
 
+    $.each(p.getData()[0].data, function(i, el) {
+        var o = p.pointOffset({x: el[0], y: el[1]});
+
+        $('<div class="data-point-label">' + el[0] + '</div>').css( {
+            position: 'absolute',
+            left: o.left+5,
+            top: o.top-10,
+            display: 'none',
+            border: '1px solid #fdd',
+            padding: '2px',
+            'background-color': '#fee',
+            opacity: 0.80
+        }).appendTo(p.getPlaceholder()).fadeIn('fast');
+    });
+
+    /*
     function showToolTip(x, y, content) {
         $('<div id="tooltip">' + content + '</div>').css ( {
             position: 'absolute',
@@ -64,6 +86,7 @@ $(function() {
             previousPoint = null;
         }
     });
+    */
 });
 </script>
 </body>
