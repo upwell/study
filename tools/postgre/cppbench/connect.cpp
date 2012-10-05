@@ -8,7 +8,7 @@ using namespace std;
 
 int main()
 {
-    string conninfo = "host='localhost' port=5432 dbname='test'";
+    string conninfo = "host='localhost' port=5432 dbname='test' user='postgres'";
 
     PGconn *conn;
 

@@ -11,7 +11,7 @@ using namespace std;
 
 const int MAX_ID = 10*1000*1000;
 const int MAX_CMD_LEN = 1024;
-const string TABLE_NAME = "usergroup";
+const string TABLE_NAME = "usergroup4";
 
 long long getCurrentTime()
 {
@@ -53,7 +53,7 @@ bool is_id_exist(PGconn *c, int id)
 
 void run(int batch, int cnt)
 {
-    string conninfo = "host='localhost' port=5432 dbname='test'";
+    string conninfo = "host='localhost' port=5432 dbname='test' user='postgres'";
 
     PGconn *conn;
     conn = PQconnectdb(conninfo.c_str());
@@ -78,12 +78,28 @@ void run(int batch, int cnt)
 
         for(int j = 0; j < rep; j++)
         {
-            int id = get_rand_value();
-            char cmd[MAX_CMD_LEN];
-            memset(cmd, 0, sizeof(cmd));
+            string cmd1 = "insert into " + TABLE_NAME + " (";
+            string cmd2 = "";
+            for(int k = 1; k < 100; k++)
+            {
+                char tmp[256];
+                memset(tmp, 0, sizeof(tmp));
 
-            snprintf(cmd, sizeof(cmd) - 1, "insert into %s values ("
-                    "'%d', '1|2|3|4|5|6');", TABLE_NAME.c_str(), id);
+                if(k != 99)
+                    snprintf(tmp, sizeof(tmp) - 1, "v%d, ", k);
+                else
+                    snprintf(tmp, sizeof(tmp) - 1, "v%d", k);
+
+                cmd1 += tmp;
+
+                if(k != 99)
+                    cmd2 += "6,";
+                else
+                    cmd2 += "6";
+            }
+
+            string cmd = cmd1 + ") values (" + cmd2 + ");";
+
             batchCmd += cmd;
         }
 
