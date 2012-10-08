@@ -1,5 +1,6 @@
 <html>
 <head>
+<!--[if IE]><script language="javascript" type="text/javascript" src="excanvas.js"></script><![endif]-->
 <script language="javascript" type="text/javascript" src="../jquery/jquery-1.8.2.min.js"></script>
 <script language="javascript" type="text/javascript" src="./jquery.flot.js"></script>
 <!--
@@ -30,14 +31,15 @@ $(function() {
     [
         {
         data: d1,
-        bars: { show: true, horizontal: true, align: 'center'},
+        bars: { show: true, horizontal: true, align: 'center', borderColor: '#F8F8F8', fillColor: '#FFF7E7'}
         }
     ],
     {
-        grid: { hoverable: true },
-        yaxis: { ticks : t1, tickLength: 10}
+        grid: { borderColor: '#FFFFFF'},
+        yaxis: { ticks : t1, tickLength: 10, autoscaleMargin: 0.05}
     });
 
+    
     $.each(p.getData()[0].data, function(i, el) {
         var o = p.pointOffset({x: el[0], y: el[1]});
 
@@ -52,6 +54,7 @@ $(function() {
             opacity: 0.80
         }).appendTo(p.getPlaceholder()).fadeIn('fast');
     });
+    
 
     /*
     function showToolTip(x, y, content) {
