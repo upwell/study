@@ -7,8 +7,13 @@ using namespace std;
 
 class test {
 public:
-    test();
+    test(string name);
     ~test();
+
+    const string getName() const;
+
+private:
+    string name_;
 };
 
 #endif

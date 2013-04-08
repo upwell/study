@@ -2,12 +2,17 @@
 
 #include "test.h"
 
-test::test()
+test::test(string name) : name_(name)
 {
-    cout << "inside constructer" << endl;
+    cout << name_ + " : inside constructer" << endl;
 }
 
 test::~test()
 {
-    cout << "insider destructer" << endl;
+    cout << name_ + " : insider destructer" << endl;
+}
+
+const string test::getName() const
+{
+    return name_;
 }
