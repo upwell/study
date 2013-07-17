@@ -59,6 +59,16 @@ class SettingConfig():
 
 def AttriveData(url):
     try:
+        opener = urllib2.build_opener()
+        opener.addheaders = [
+          ('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'),
+          ('Accept-Charset', 'UTF-8,*;q=0.5'),
+          #('Accept-Encoding', 'gzip,deflate'),
+          ('Accept-Lanaguage', 'en-US,en;q=0.8'),
+          ('User-Agent',
+           'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.81 Safari/537.1')
+          ]
+        urllib2.install_opener(opener)
         u = urllib2.urlopen(url)
     except urllib2.URLError, e:
         print "urlopen error:", e
@@ -157,7 +167,28 @@ class DownloadingThread(threading.Thread):
         if not os.path.exists(global_setting.dpath):
             os.makedirs(global_setting.dpath)
 
-        file_path = global_setting.dpath + PATH_SEP + filename
+        artists = self.mp3.artist.split(';')
+        file_path = global_setting.dpath + PATH_SEP + artists[0]
+
+        try:
+            if not os.path.exists(file_path):
+                os.makedirs(file_path)
+        except OSError, e:
+            print 'makedir ' + file_path + ' failed ', e
+
+        file_path = file_path + PATH_SEP + self.mp3.album
+
+        try:
+            if not os.path.exists(file_path):
+                os.makedirs(file_path)
+        except OSError, e:
+            print 'makedir ' + file_path + ' failed ', e
+
+        file_path = file_path + PATH_SEP + filename
+
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
         try:
             local_file = open(file_path, 'w')
             local_file.write(u.read())
@@ -320,21 +351,21 @@ class Main(wx.Frame):
     def GetAlbumAddr(self, url):
         albumAddr = ''
 
-        m = re.search('/album/[0-9]+$', url)
+        m = re.search('/album/[0-9]+', url)
         if m is not None:
-            m = re.search('[0-9]+$', url)
-            albumId = m.group()
+            m = re.search('/([0-9]+)\??', url)
+            albumId = m.group(1)
             albumAddr = "http://www.xiami.com/song/playlist/id/" + albumId + "/type/1"
             return albumAddr
 
-        m = re.search('/showcollect/id/[0-9]+$', url)
+        m = re.search('/showcollect/id/[0-9]+', url)
         if m is not None:
-            m = re.search('[0-9]+$', url)
-            albumId = m.group()
+            m = re.search('/([0-9]+)\??', url)
+            albumId = m.group(1)
             albumAddr = "http://www.xiami.com/song/playlist/id/" + albumId + "/type/3"
             return albumAddr
 
-        m = re.search('/artist/[0-9]+$', url)
+        m = re.search('/artist/[0-9]+', url)
         if m is not None:
             data = AttriveData(url)
             if len(data) > 0:
