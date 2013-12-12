@@ -6,16 +6,17 @@ import wx
 import wx.lib.mixins.listctrl as listmix
 import wx.lib.filebrowsebutton as filebrowse
 
-import sys, os
-import urllib2, urllib
-import re, time, eyeD3
+import os
+import urllib2
+import re
+import eyed3
+import eyed3.mp3
 import ConfigParser
 
 import threading
 
 from xml.dom.minidom import parseString
 
-import addrdecoder
 from addrdecoder import GetLocation
 from mp3info import Mp3Info
 from artisthot import ArtistHotParser
@@ -28,7 +29,8 @@ PATH_SEP = ''
 HOME_DIR = ''
 CURR_DIR = ''
 
-global_setting = None
+GLOBAL_SETTING = None
+
 
 class SettingConfig():
 
@@ -61,13 +63,14 @@ def AttriveData(url):
     try:
         opener = urllib2.build_opener()
         opener.addheaders = [
-          ('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'),
-          ('Accept-Charset', 'UTF-8,*;q=0.5'),
-          #('Accept-Encoding', 'gzip,deflate'),
-          ('Accept-Lanaguage', 'en-US,en;q=0.8'),
-          ('User-Agent',
-           'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.81 Safari/537.1')
-          ]
+            ('Accept', 'text/html,application/xhtml+xml,application/xml;'
+                       'q=0.9,*/*;q=0.8'),
+            ('Accept-Charset', 'UTF-8,*;q=0.5'),
+            ('Accept-Lanaguage', 'en-US,en;q=0.8'),
+            ('User-Agent',
+             'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.1 '
+             '(KHTML, like Gecko) Chrome/21.0.1180.81 Safari/537.1')
+            ]
         urllib2.install_opener(opener)
         u = urllib2.urlopen(url)
     except urllib2.URLError, e:
@@ -77,17 +80,20 @@ def AttriveData(url):
     data = u.read()
     return data
 
+
 def ParseXMLtoURLs(data):
     mp3s = []
 
     dom = parseString(data)
     tracks = dom.getElementsByTagName("track")
     for track in tracks:
-        rawData = track.getElementsByTagName("location")[0].firstChild.wholeText
+        rawData = (
+            track.getElementsByTagName("location")[0].firstChild.wholeText)
         url = GetLocation(rawData)
 
         name = track.getElementsByTagName("title")[0].firstChild.wholeText
-        album = track.getElementsByTagName("album_name")[0].firstChild.wholeText
+        album = (
+            track.getElementsByTagName("album_name")[0].firstChild.wholeText)
         artist = track.getElementsByTagName("artist")[0].firstChild.wholeText
 
         mp3 = Mp3Info(name, album, artist, url)
@@ -95,11 +101,12 @@ def ParseXMLtoURLs(data):
 
     return mp3s
 
-''' Self listctrl class for AutoWidth '''
+
 class FlexCtrlList(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
+    ''' Self listctrl class for AutoWidth '''
 
     def __init__(self, parent, ID, pos=wx.DefaultPosition,
-            size=wx.DefaultSize, style=0):
+                 size=wx.DefaultSize, style=0):
         wx.ListCtrl.__init__(self, parent, ID, pos, size, style)
         listmix.ListCtrlAutoWidthMixin.__init__(self)
         self.setResizeColumn(0)
@@ -111,9 +118,11 @@ STATUS_FAILED = 0
 STATUS_SUCCEED = 1
 STATUS_START = 2
 
+
 def EVT_RESULT(win, func):
     """Define Result Event."""
     win.Connect(-1, -1, EVT_RESULT_ID, func)
+
 
 class DownloadEvent(wx.PyEvent):
 
@@ -124,8 +133,8 @@ class DownloadEvent(wx.PyEvent):
         self.status = status
 
 
-''' Downlading thread '''
 class DownloadingThread(threading.Thread):
+    ''' Downlading thread '''
 
     def __init__(self, window, index, mp3):
         threading.Thread.__init__(self)
@@ -138,37 +147,38 @@ class DownloadingThread(threading.Thread):
         url = self.mp3.url
 
         wx.PostEvent(self.notify_window,
-            DownloadEvent(self.index, STATUS_START))
+                     DownloadEvent(self.index, STATUS_START))
 
         try:
-            #keepalive_handler = HTTPHandler()
-            #opener = urllib2.build_opener(keepalive_handler)
             opener = urllib2.build_opener()
             opener.addheaders = [
-                    ('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'),
-                    ('Accept-Charset', 'UTF-8,*;q=0.5'),
-                    #('Accept-Encoding', 'gzip,deflate'),
-                    ('Accept-Lanaguage', 'en-US,en;q=0.8'),
-                    ('User-Agent',
-                        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.81 Safari/537.1')
-                    ]
+                ('Accept',
+                 'text/html,application/xhtml+xml,application/xml;'
+                 'q=0.9,*/*;q=0.8'),
+                ('Accept-Charset', 'UTF-8,*;q=0.5'),
+                ('Accept-Lanaguage', 'en-US,en;q=0.8'),
+                ('User-Agent',
+                 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.1 '
+                 '(KHTML, like Gecko) Chrome/21.0.1180.81 Safari/537.1')
+                ]
+
             urllib2.install_opener(opener)
             u = urllib2.urlopen(url)
 
         except urllib2.URLError, e:
             print 'url open error:', e
             wx.PostEvent(self.notify_window,
-                    DownloadEvent(self.index, STATUS_FAILED))
+                         DownloadEvent(self.index, STATUS_FAILED))
             return
 
         filename = self.mp3.name + ".mp3"
         filename = filename.replace('/', ' or ')
 
-        if not os.path.exists(global_setting.dpath):
-            os.makedirs(global_setting.dpath)
+        if not os.path.exists(GLOBAL_SETTING.dpath):
+            os.makedirs(GLOBAL_SETTING.dpath)
 
         artists = self.mp3.artist.split(';')
-        file_path = global_setting.dpath + PATH_SEP + artists[0]
+        file_path = GLOBAL_SETTING.dpath + PATH_SEP + artists[0]
 
         try:
             if not os.path.exists(file_path):
@@ -194,27 +204,28 @@ class DownloadingThread(threading.Thread):
             local_file.write(u.read())
             local_file.close()
 
-            tag = eyeD3.Tag()
-            tag.link(file_path)
-            tag.header.setVersion(eyeD3.ID3_V2_3)
-            tag.encoding = '\x01'
-            tag.setArtist(self.mp3.artist)
-            tag.setAlbum(self.mp3.album)
-            tag.update()
+            mp3file = eyed3.mp3.Mp3AudioFile(file_path)
+            mp3file.initTag()
+            mp3file.tag.artist = unicode(self.mp3.artist)
+            mp3file.tag.album = unicode(self.mp3.album)
+            mp3file.tag.title = unicode(self.mp3.name)
+            mp3file.tag.save()
         except IOError, e:
             print 'operate file error:', e
             wx.PostEvent(self.notify_window,
-                    DownloadEvent(self.index, STATUS_FAILED))
+                         DownloadEvent(self.index, STATUS_FAILED))
             return
 
-        wx.PostEvent(self.notify_window, DownloadEvent(self.index, STATUS_SUCCEED))
+        wx.PostEvent(self.notify_window,
+                     DownloadEvent(self.index, STATUS_SUCCEED))
         return
+
 
 class Settings(wx.Frame):
 
     def __init__(self, parent, title):
         super(Settings, self).__init__(parent, title='Settings',
-                size=(400, 200))
+                                       size=(400, 200))
 
         self.InitUI()
         self.Centre()
@@ -226,22 +237,23 @@ class Settings(wx.Frame):
         sizer = wx.GridBagSizer(4, 4)
 
         text_setting = wx.StaticText(panel, label='Settings')
-        sizer.Add(text_setting, pos=(0, 0), flag=wx.TOP|wx.LEFT|wx.BOTTOM,
-                border=10)
+        sizer.Add(text_setting, pos=(0, 0), flag=wx.TOP | wx.LEFT | wx.BOTTOM,
+                  border=10)
 
         line = wx.StaticLine(panel)
         sizer.Add(line, pos=(1, 0), span=(1, 4),
-                flag=wx.EXPAND|wx.BOTTOM, border=10)
+                  flag=wx.EXPAND | wx.BOTTOM, border=10)
 
         self.btn_downfolder = filebrowse.DirBrowseButton(
-                panel, labelText='Download Folder',
-                startDirectory=global_setting.dpath,
-                changeCallback = self.DbbCallback)
-        sizer.Add(self.btn_downfolder, pos=(2, 0), span=(2, 4), flag=wx.EXPAND, border=10)
+            panel, labelText='Download Folder',
+            startDirectory=GLOBAL_SETTING.dpath,
+            changeCallback=self.DbbCallback)
+        sizer.Add(self.btn_downfolder, pos=(2, 0), span=(2, 4),
+                  flag=wx.EXPAND, border=10)
 
         line = wx.StaticLine(panel)
         sizer.Add(line, pos=(3, 0), span=(1, 4),
-                flag=wx.EXPAND|wx.BOTTOM|wx.TOP, border=10)
+                  flag=wx.EXPAND | wx.BOTTOM | wx.TOP, border=10)
 
         btn_ok = wx.Button(panel, label='Ok')
         sizer.Add(btn_ok, pos=(4, 2))
@@ -254,13 +266,13 @@ class Settings(wx.Frame):
         btn_ok.Bind(wx.EVT_BUTTON, self.OnOkClicked)
         btn_cancel.Bind(wx.EVT_BUTTON, self.OnCancelClicked)
 
-        self.btn_downfolder.SetValue(global_setting.dpath)
+        self.btn_downfolder.SetValue(GLOBAL_SETTING.dpath)
 
     def OnOkClicked(self, e):
-        global global_setting
+        global GLOBAL_SETTING
 
-        global_setting.dpath = self.btn_downfolder.GetValue()
-        global_setting.WriteConfigToFile()
+        GLOBAL_SETTING.dpath = self.btn_downfolder.GetValue()
+        GLOBAL_SETTING.WriteConfigToFile()
 
         self.Close()
 
@@ -275,7 +287,7 @@ class Main(wx.Frame):
 
     def __init__(self, parent, title):
         super(Main, self).__init__(parent, title='Xiami Downloader',
-            size=(600, 500))
+                                   size=(600, 500))
 
         self.InitUI()
         self.Centre()
@@ -293,8 +305,9 @@ class Main(wx.Frame):
         toolbar = self.CreateToolBar()
         toolbar.SetToolBitmapSize((16, 16))
         toolbar.AddSeparator()
-        setting_tool = toolbar.AddLabelTool(wx.ID_ANY,
-                'Settings', wx.Bitmap('settings.png'))
+        setting_tool = toolbar.AddLabelTool(
+            wx.ID_ANY,
+            'Settings', wx.Bitmap('settings.png'))
         toolbar.AddSeparator()
         toolbar.Realize()
 
@@ -313,7 +326,8 @@ class Main(wx.Frame):
         hbox_url.Add(self.url_text, proportion=1)
         hbox_url.Add(url_info_btn, flag=wx.LEFT, border=8)
 
-        vbox.Add(hbox_url, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
+        vbox.Add(hbox_url, flag=wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP,
+                 border=10)
 
         url_info_btn.Bind(wx.EVT_BUTTON, self.UrlInfoBtnClicked)
         # end of URL row
@@ -321,16 +335,18 @@ class Main(wx.Frame):
         # Album info
         hbox_album = wx.BoxSizer(wx.VERTICAL)
 
-        self.song_list = FlexCtrlList(self.panel, 100, style=wx.LC_REPORT|wx.BORDER_SUNKEN)
+        self.song_list = FlexCtrlList(self.panel, 100,
+                                      style=wx.LC_REPORT | wx.BORDER_SUNKEN)
         self.song_list.InsertColumn(0, 'Song')
         self.song_list.InsertColumn(1, 'Artist')
         self.song_list.InsertColumn(2, 'Album')
         self.song_list.InsertColumn(3, 'Status')
 
-        hbox_album.Add(self.song_list, 1, wx.ALL|wx.EXPAND, 5)
+        hbox_album.Add(self.song_list, 1, wx.ALL | wx.EXPAND, 5)
 
         vbox.Add(hbox_album, proportion=1,
-                flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP|wx.Bottom, border=10)
+                 flag=wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP | wx.Bottom,
+                 border=10)
         # end of album info
 
         # Download button
@@ -355,14 +371,18 @@ class Main(wx.Frame):
         if m is not None:
             m = re.search('/([0-9]+)\??', url)
             albumId = m.group(1)
-            albumAddr = "http://www.xiami.com/song/playlist/id/" + albumId + "/type/1"
+            albumAddr = ("http://www.xiami.com/song/playlist/id/" +
+                         albumId +
+                         "/type/1")
             return albumAddr
 
         m = re.search('/showcollect/id/[0-9]+', url)
         if m is not None:
             m = re.search('/([0-9]+)\??', url)
             albumId = m.group(1)
-            albumAddr = "http://www.xiami.com/song/playlist/id/" + albumId + "/type/3"
+            albumAddr = ("http://www.xiami.com/song/playlist/id/" +
+                         albumId +
+                         "/type/3")
             return albumAddr
 
         m = re.search('/artist/[0-9]+', url)
@@ -385,14 +405,13 @@ class Main(wx.Frame):
 
         return albumAddr
 
-
     def UrlInfoBtnClicked(self, e):
         url = self.url_text.GetValue()
         url = url.strip()
         if len(url) > 0:
             albumAddr = self.GetAlbumAddr(url)
 
-            if len(albumAddr) > 0 :
+            if len(albumAddr) > 0:
                 self.mp3s = ParseXMLtoURLs(AttriveData(albumAddr))
 
                 self.song_list.DeleteAllItems()
@@ -435,18 +454,20 @@ class Main(wx.Frame):
     def OnSettings(self, e):
         Settings(None, title='Settings')
 
+
 def init():
     global HOME_DIR
     global PATH_SEP
     global CURR_DIR
-    global global_setting
+    global GLOBAL_SETTING
 
     HOME_DIR = os.getenv('HOME')
     PATH_SEP = os.sep
     CURR_DIR = os.curdir
 
-    global_setting = SettingConfig()
-    global_setting.LoadConfigFromFile()
+    GLOBAL_SETTING = SettingConfig()
+    GLOBAL_SETTING.LoadConfigFromFile()
+
 
 def main():
     init()
@@ -454,6 +475,6 @@ def main():
     Main(None, title='Xiami Downloader')
     app.MainLoop()
 
+
 if __name__ == '__main__':
     main()
-
